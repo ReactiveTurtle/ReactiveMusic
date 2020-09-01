@@ -1,0 +1,3 @@
+include ':tools'
+include ':app'
+rootProject.name = "Reactive Music"

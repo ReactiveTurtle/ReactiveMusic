@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".player.mvp.view.PlayerActivity">
+
+    <TextView
+        android:id="@+id/playerTrackArtist"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginLeft="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginRight="32dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/playerTrackAlbum" />
+
+    <TextView
+        android:id="@+id/playerTrackAlbum"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginLeft="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginRight="32dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/playerAlbumImage"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/playerTrackName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginLeft="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginRight="32dp"
+        android:layout_marginBottom="32dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/playerSeekBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <View
+        android:id="@+id/playerAlbumImage"
+        android:layout_width="176dp"
+        android:layout_height="176dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="32dp"
+        app:layout_constraintBottom_toTopOf="@+id/playerTrackName"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/playerTrackArtist" />
+
+    <SeekBar
+        android:id="@+id/playerSeekBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginLeft="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginBottom="8dp"
+        android:padding="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/playerTrackProgress"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/playerTrackProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginLeft="16dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/playerPlayPause"
+        app:layout_constraintStart_toStartOf="@+id/playerSeekBar" />
+
+    <TextView
+        android:id="@+id/playerTrackDuration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginRight="16dp"
+        app:layout_constraintBottom_toBottomOf="@+id/playerTrackProgress"
+        app:layout_constraintEnd_toEndOf="@+id/playerSeekBar"
+        app:layout_constraintTop_toTopOf="@+id/playerTrackProgress" />
+
+    <Button
+        android:id="@+id/playerPreviousTrack"
+        android:layout_width="@dimen/player_default_button_size"
+        android:layout_height="@dimen/player_default_button_size"
+        app:backgroundTint="@null"
+        app:elevation="0dp"
+        app:iconTint="@null"
+        app:layout_constraintBottom_toBottomOf="@+id/playerPlayPause"
+        app:layout_constraintEnd_toStartOf="@+id/playerPlayPause"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/playerPlayPause" />
+
+    <Button
+        android:id="@+id/playerPlayPause"
+        android:layout_width="@dimen/player_default_button_size"
+        android:layout_height="@dimen/player_default_button_size"
+        android:layout_marginBottom="8dp"
+        android:button="@null"
+        app:backgroundTint="@null"
+        app:elevation="0dp"
+        app:iconTint="@null"
+        app:layout_constraintBottom_toTopOf="@+id/playerRepeatTrack"
+        app:layout_constraintEnd_toStartOf="@+id/playerNextTrack"
+        app:layout_constraintStart_toEndOf="@+id/playerPreviousTrack" />
+
+    <Button
+        android:id="@+id/playerNextTrack"
+        android:layout_width="@dimen/player_default_button_size"
+        android:layout_height="@dimen/player_default_button_size"
+        app:backgroundTint="@null"
+        app:elevation="0dp"
+        app:iconTint="@null"
+        app:layout_constraintBottom_toBottomOf="@+id/playerPlayPause"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/playerPlayPause"
+        app:layout_constraintTop_toTopOf="@+id/playerPlayPause" />
+
+    <CheckBox
+        android:id="@+id/playerRepeatTrack"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/repeat_button"
+        android:button="@null"
+        app:backgroundTint="@null"
+        app:iconTint="@null"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/playerNextTrack" />
+</androidx.constraintlayout.widget.ConstraintLayout>

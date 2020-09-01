@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Музыка</string>
+    <string name="playlistExists">Плейлист с таким названием уже существует</string>
+    <string name="files">Файлы</string>
+    <string name="music">Музыка</string>
+    <string name="incorrect_path">Неправильный путь</string>
+    <string name="bytes">байт</string>
+    <string name="kilobytes">кб</string>
+    <string name="megabytes">мб</string>
+    <string name="gigabytes">гб</string>
+    <string name="terabytes">тб</string>
+    <string name="petabytes">пб</string>
+    <string name="exabytes">эб</string>
+    <string name="zetabytes">зб</string>
+    <string name="yotabytes">йб</string>
+    <string name="playlistEmpty">Плейлист пуст</string>
+    <string name="playlistsNotFound">Вы не добавили ни одного плейлиста</string>
+    <string name="track_not_found">Звуковая дорожка не найдена</string>
+    <string name="musicListEmpty">Не найдено ни одного трека</string>
+    <string name="themes">Темы</string>
+    <string name="equalizer">Эквалайзер</string>
+    <string name="type_playlist_name">Введите название плейлиста</string>
+    <string name="create">Создать</string>
+    <string name="cancel">Отмена</string>
+    <string name="playlist_creation">Создание плейлиста</string>
+    <string name="new_playlist">Новый плейлист</string>
+    <string name="save">Сохранить</string>
+    <string name="change_playlist">Изменение плейлиста</string>
+    <string name="rename">Переименовать</string>
+    <string name="delete">Удалить</string>
+    <string name="choose_an_action">Выберите действие</string>
+    <string name="player">Плеер</string>
+    <string name="playlists">Плейлисты</string>
+    <string name="settings">Настройки</string>
+    <string name="unknown_album">Неизвестный альбом</string>
+    <string name="unknown_artist">Неизвестный исполнитель</string>
+    <string name="unknown_track">Неизвестная дорожка</string>
+    <string name="tracks_not_found">Не найдено ни одного трека на устройстве</string>
+</resources>

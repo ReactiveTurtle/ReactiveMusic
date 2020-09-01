@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/playerMusicSmallRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <Button
+        android:id="@+id/playerSmallPreviousTrack"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/previous_button"
+        app:backgroundTint="@null"
+        app:iconTint="@null"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/playerSmallPlayPause"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/playerSmallPlayPause"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/ic_play"
+        android:button="@null"
+        app:backgroundTint="@null"
+        app:iconTint="@null"
+        app:layout_constraintBottom_toBottomOf="@+id/playerSmallPreviousTrack"
+        app:layout_constraintEnd_toStartOf="@+id/playerSmallNextTrack"
+        app:layout_constraintStart_toEndOf="@+id/playerSmallPreviousTrack"
+        app:layout_constraintTop_toTopOf="@+id/playerSmallPreviousTrack" />
+
+    <Button
+        android:id="@+id/playerSmallNextTrack"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/next_button"
+        app:backgroundTint="@null"
+        app:iconTint="@null"
+        app:layout_constraintBottom_toBottomOf="@+id/playerSmallPlayPause"
+        app:layout_constraintStart_toEndOf="@id/playerSmallPlayPause"
+        app:layout_constraintTop_toTopOf="@+id/playerSmallPlayPause" />
+
+    <TextView
+        android:id="@+id/playerSmallTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginRight="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/playerSmallInfo"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/playerSmallNextTrack"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/playerSmallInfo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginBottom="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/playerSmallNextTrack"
+        app:layout_constraintTop_toBottomOf="@+id/playerSmallTitle" />
+
+    <View
+        android:id="@+id/playerSmallClicker"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/player_music_list_item_back"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/playerSmallNextTrack"
+        app:layout_constraintTop_toTopOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>
