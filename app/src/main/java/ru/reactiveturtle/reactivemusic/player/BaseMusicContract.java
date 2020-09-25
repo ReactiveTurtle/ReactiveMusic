@@ -1,22 +1,30 @@
 package ru.reactiveturtle.reactivemusic.player;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 public interface BaseMusicContract {
     interface Repository extends BaseModel {
-        void setCurrentMusic(MusicInfo musicInfo);
+        void setCurrentMusic(@Nullable MusicInfo musicInfo);
 
+        @Nullable
         MusicInfo getCurrentMusic();
 
         void setCurrentPlaylist(String playlist);
 
+        @Nullable
         String getCurrentPlaylist();
-    }
 
-    interface Model extends BaseModel {
         void setRepeatTrack(boolean isRepeat);
 
         boolean isRepeatTrack();
+
+        void setPlayRandomTrack(boolean isRandom);
+
+        boolean isPlayRandomTrack();
+    }
+
+    interface Model extends BaseModel {
     }
 
     interface BaseModel {

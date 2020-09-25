@@ -54,7 +54,9 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
                         track.setDuration(-1);
                     } else {
                         musicInfo.setAlbumImage(data);
-                        mMusicList.set(position, musicInfo);
+                        if (position < mMusicList.size()) {
+                            mMusicList.set(position, musicInfo);
+                        }
                         holder.showTransparent();
                         holder.showInfo(musicInfo);
                     }

@@ -21,6 +21,8 @@ public class PlayerRepository implements PlayerContract.Repository {
     private static final String REPOSITORY_NAME = "player_repository";
     private static final String SELECTED_MUSIC_FILE = "selected_music_file";
     private static final String CURRENT_PLAYLIST = "current_playlist";
+    private static final String IS_REPEAT_TRACK = "is_repeat_track";
+    private static final String IS_PLAY_RANDOM_TRACK = "is_play_random_track";
     private static final String PLAYLISTS = "playlists";
     private static final String THEME_IS_DARK = "theme_is_dark";
     private static final String THEME_COLOR = "theme_color";
@@ -38,23 +40,47 @@ public class PlayerRepository implements PlayerContract.Repository {
     }
 
     @Override
-    public void setCurrentMusic(MusicInfo musicInfo) {
-        getEditor().putString(SELECTED_MUSIC_FILE, musicInfo.getPath()).apply();
+    public void setCurrentMusic(@Nullable MusicInfo musicInfo) {
+        getEditor().putString(SELECTED_MUSIC_FILE,
+                musicInfo != null ? musicInfo.getPath() : null).apply();
     }
 
+    @Nullable
     @Override
     public MusicInfo getCurrentMusic() {
-        return new MusicInfo(preferences.getString(SELECTED_MUSIC_FILE, null));
+        String path = preferences.getString(SELECTED_MUSIC_FILE, null);
+        return path != null ? new MusicInfo(path) : null;
     }
 
     @Override
-    public void setCurrentPlaylist(String playlist) {
+    public void setCurrentPlaylist(@Nullable String playlist) {
         getEditor().putString(CURRENT_PLAYLIST, playlist).apply();
     }
 
+    @Nullable
     @Override
     public String getCurrentPlaylist() {
         return preferences.getString(CURRENT_PLAYLIST, null);
+    }
+
+    @Override
+    public void setRepeatTrack(boolean isRepeat) {
+        getEditor().putBoolean(IS_REPEAT_TRACK, isRepeat).apply();
+    }
+
+    @Override
+    public boolean isRepeatTrack() {
+        return preferences.getBoolean(IS_REPEAT_TRACK, false);
+    }
+
+    @Override
+    public void setPlayRandomTrack(boolean isRandom) {
+        getEditor().putBoolean(IS_PLAY_RANDOM_TRACK, isRandom).apply();
+    }
+
+    @Override
+    public boolean isPlayRandomTrack() {
+        return preferences.getBoolean(IS_PLAY_RANDOM_TRACK, false);
     }
 
     @Override
@@ -176,7 +202,7 @@ public class PlayerRepository implements PlayerContract.Repository {
 
     @NonNull
     @Override
-    public List<String> getPlaylist(String playlist) {
+    public List<String> getPlaylist(@Nullable String playlist) {
         if (playlist != null) {
             String tracks = preferences.getString(playlist, null);
             String[] tracksArray = tracks != null ? tracks.split(";") : new String[0];

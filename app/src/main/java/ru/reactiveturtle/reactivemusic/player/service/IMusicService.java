@@ -1,14 +1,12 @@
 package ru.reactiveturtle.reactivemusic.player.service;
 
+import androidx.annotation.NonNull;
+
 import ru.reactiveturtle.reactivemusic.player.BaseMusicContract;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 
 public interface IMusicService {
     interface Model extends BaseMusicContract.Model {
-        void setActivityActive(boolean isActive);
-
-        boolean isActivityActive();
-
         void setTrackPrepared(boolean isPrepared);
 
         boolean isTrackPrepared();
@@ -23,13 +21,11 @@ public interface IMusicService {
 
         void stopTimer();
 
-        void playTrack(String path);
+        void playTrack(@NonNull String path);
 
         void updateTrackProgress(int progress);
 
         void repeatTrack(boolean isRepeat);
-
-        void sendRepeatTrack(boolean isRepeat);
 
         void showActivity(String playlist, String track);
 
@@ -42,6 +38,8 @@ public interface IMusicService {
         void onActivityPaused();
 
         void onPlayerPrepared(boolean isFirst, int duration);
+
+        void onTrackComplete();
 
         void onPlay();
 

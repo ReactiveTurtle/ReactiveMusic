@@ -44,7 +44,7 @@ public class SelectMusicView implements SelectorContract.View {
         mViewPager = activity.findViewById(R.id.selectMusicViewPager);
         TabLayout tabLayout = activity.findViewById(R.id.selectMusicTabLayout);
         mPagerAdapter = new SelectMusicPagerAdapter(activity);
-        mPagerAdapter.add(new SelectMusicListFragment(), new SelectMusicFilesFragment(activity));
+        mPagerAdapter.add(new SelectMusicListFragment(), new SelectMusicFilesFragment());
 
         mViewPager.setAdapter(mPagerAdapter);
         new TabLayoutMediator(tabLayout, mViewPager, (tab, position) -> {

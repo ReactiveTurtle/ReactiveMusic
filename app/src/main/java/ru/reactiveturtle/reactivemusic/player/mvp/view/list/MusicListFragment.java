@@ -157,6 +157,7 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
 
     @Override
     public void updateThemeContext() {
+        mEmpty.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
         mTitle.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
         mInfo.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
 

@@ -36,7 +36,7 @@
         android:maxLines="1"
         android:textSize="18sp"
         android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@+id/playerAlbumImage"
+        app:layout_constraintBottom_toTopOf="@id/playerAlbumImage"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -63,7 +63,6 @@
         android:id="@+id/playerAlbumImage"
         android:layout_width="176dp"
         android:layout_height="176dp"
-        android:layout_marginTop="32dp"
         android:layout_marginBottom="32dp"
         app:layout_constraintBottom_toTopOf="@+id/playerTrackName"
         app:layout_constraintEnd_toEndOf="parent"
@@ -104,6 +103,19 @@
         app:layout_constraintEnd_toEndOf="@+id/playerSeekBar"
         app:layout_constraintTop_toTopOf="@+id/playerTrackProgress" />
 
+    <CheckBox
+        android:id="@+id/playerRandomTrack"
+        android:layout_width="@dimen/player_default_button_size"
+        android:layout_height="@dimen/player_default_button_size"
+        android:button="@null"
+        app:backgroundTint="@null"
+        app:elevation="0dp"
+        app:iconTint="@null"
+        app:layout_constraintBottom_toBottomOf="@+id/playerPlayPause"
+        app:layout_constraintEnd_toStartOf="@+id/playerPreviousTrack"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/playerPlayPause" />
+
     <Button
         android:id="@+id/playerPreviousTrack"
         android:layout_width="@dimen/player_default_button_size"
@@ -113,19 +125,19 @@
         app:iconTint="@null"
         app:layout_constraintBottom_toBottomOf="@+id/playerPlayPause"
         app:layout_constraintEnd_toStartOf="@+id/playerPlayPause"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/playerRandomTrack"
         app:layout_constraintTop_toTopOf="@+id/playerPlayPause" />
 
     <Button
         android:id="@+id/playerPlayPause"
         android:layout_width="@dimen/player_default_button_size"
         android:layout_height="@dimen/player_default_button_size"
-        android:layout_marginBottom="8dp"
+        android:layout_marginBottom="32dp"
         android:button="@null"
         app:backgroundTint="@null"
         app:elevation="0dp"
         app:iconTint="@null"
-        app:layout_constraintBottom_toTopOf="@+id/playerRepeatTrack"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/playerNextTrack"
         app:layout_constraintStart_toEndOf="@+id/playerPreviousTrack" />
 
@@ -137,20 +149,20 @@
         app:elevation="0dp"
         app:iconTint="@null"
         app:layout_constraintBottom_toBottomOf="@+id/playerPlayPause"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/playerRepeatTrack"
         app:layout_constraintStart_toEndOf="@+id/playerPlayPause"
         app:layout_constraintTop_toTopOf="@+id/playerPlayPause" />
 
     <CheckBox
         android:id="@+id/playerRepeatTrack"
-        android:layout_width="72dp"
-        android:layout_height="72dp"
-        android:layout_marginBottom="8dp"
+        android:layout_width="@dimen/player_default_button_size"
+        android:layout_height="@dimen/player_default_button_size"
         android:background="@drawable/repeat_button"
         android:button="@null"
         app:backgroundTint="@null"
         app:iconTint="@null"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@+id/playerNextTrack"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/playerNextTrack" />
+        app:layout_constraintStart_toEndOf="@+id/playerNextTrack"
+        app:layout_constraintTop_toTopOf="@+id/playerNextTrack" />
 </androidx.constraintlayout.widget.ConstraintLayout>

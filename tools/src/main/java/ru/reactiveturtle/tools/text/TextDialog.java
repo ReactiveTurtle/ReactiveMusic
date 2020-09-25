@@ -1,4 +1,4 @@
-package ru.reactiveturtle.tools.name;
+package ru.reactiveturtle.tools.text;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -24,13 +24,13 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import ru.reactiveturtle.tools.R;
 
-public class NameDialog extends BottomSheetDialogFragment {
+public class TextDialog extends BottomSheetDialogFragment {
     private AppCompatEditText editText;
     private OnClickListener onClickListener;
 
     private Builder mBuilder;
 
-    NameDialog(@NonNull Builder builder) {
+    TextDialog(@NonNull Builder builder) {
         mBuilder = builder;
     }
 
@@ -38,7 +38,9 @@ public class NameDialog extends BottomSheetDialogFragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         setCancelable(false);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (getDialog() != null
+                && getDialog().getWindow() != null
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getDialog().getWindow().setStatusBarColor(Color.TRANSPARENT);
         }
         View view = inflater.inflate(R.layout.name_dialog_fragment, container, false);
@@ -52,6 +54,7 @@ public class NameDialog extends BottomSheetDialogFragment {
         editText.setTextColor(mBuilder.textColor);
         editText.setBackground(mBuilder.editTextBackground);
         editText.setEnabled(true);
+        editText.setLines(mBuilder.lineCount);
         editText.setClickable(true);
         editText.setFocusable(true);
 
@@ -115,11 +118,11 @@ public class NameDialog extends BottomSheetDialogFragment {
         }
     }
 
-    public static class Builder implements INameDialog {
+    public static class Builder implements ITextDialog {
         private Drawable background;
 
         @Override
-        public NameDialog.Builder setBackground(Drawable drawable) {
+        public TextDialog.Builder setBackground(Drawable drawable) {
             background = drawable;
             return this;
         }
@@ -127,7 +130,7 @@ public class NameDialog extends BottomSheetDialogFragment {
         private Drawable editTextBackground;
 
         @Override
-        public NameDialog.Builder setEditTextBackground(Drawable drawable) {
+        public TextDialog.Builder setEditTextBackground(Drawable drawable) {
             editTextBackground = drawable;
             return this;
         }
@@ -148,10 +151,18 @@ public class NameDialog extends BottomSheetDialogFragment {
             return this;
         }
 
+        private int lineCount = 1;
+
+        @Override
+        public Builder setLineCount(int lines) {
+            lineCount = Math.max(lines, 0);
+            return this;
+        }
+
         private String title = "";
 
         @Override
-        public NameDialog.Builder setTitle(String text) {
+        public TextDialog.Builder setTitle(String text) {
             title = text;
             return this;
         }
@@ -167,7 +178,7 @@ public class NameDialog extends BottomSheetDialogFragment {
         private String text = "";
 
         @Override
-        public NameDialog.Builder setText(String text) {
+        public TextDialog.Builder setText(String text) {
             this.text = text;
             return this;
         }
@@ -191,7 +202,7 @@ public class NameDialog extends BottomSheetDialogFragment {
         private int inputType = InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_VARIATION_NORMAL;
 
         @Override
-        public NameDialog.Builder setInputType(int inputType) {
+        public TextDialog.Builder setInputType(int inputType) {
             this.inputType = inputType;
             return this;
         }
@@ -199,7 +210,7 @@ public class NameDialog extends BottomSheetDialogFragment {
         private String positiveText = "";
 
         @Override
-        public NameDialog.Builder setPositiveText(String text) {
+        public TextDialog.Builder setPositiveText(String text) {
             positiveText = text;
             return this;
         }
@@ -223,7 +234,7 @@ public class NameDialog extends BottomSheetDialogFragment {
         private String negativeText = "";
 
         @Override
-        public NameDialog.Builder setNegativeText(String text) {
+        public TextDialog.Builder setNegativeText(String text) {
             negativeText = text;
             return this;
         }
@@ -247,13 +258,13 @@ public class NameDialog extends BottomSheetDialogFragment {
         private String hint = "";
 
         @Override
-        public NameDialog.Builder setHint(String text) {
+        public TextDialog.Builder setHint(String text) {
             hint = text;
             return this;
         }
 
-        public NameDialog build() {
-            return new NameDialog(this);
+        public TextDialog build() {
+            return new TextDialog(this);
         }
     }
 }

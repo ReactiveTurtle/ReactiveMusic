@@ -29,8 +29,8 @@ import ru.reactiveturtle.reactivemusic.player.Loaders;
 
 public class SelectMusicFilesAdapter extends RecyclerView.Adapter<SelectMusicFilesAdapter.SelectFreeFilesHolder> {
     private List<File> mFiles = new ArrayList<>();
+    private List<String> mFilesReplace = new ArrayList<>();
     private List<Drawable> mIconFiles = new ArrayList<>();
-    private List<Helper.ImageIconLoader> mIconLoaders = new ArrayList<>();
     private List<String> mSelectedFiles = new ArrayList<>();
     private OnItemClickListener mOnItemClickListener;
 
@@ -40,24 +40,27 @@ public class SelectMusicFilesAdapter extends RecyclerView.Adapter<SelectMusicFil
         return new SelectFreeFilesHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.select_music_files_adapter_item, parent, false));
     }
 
+    private static final ColorDrawable DEFAULT_GRAY = new ColorDrawable(Theme.CONTEXT_PRIMARY_LIGHT);
     @Override
     public void onBindViewHolder(@NonNull SelectFreeFilesHolder holder, int position) {
         if (mFiles.get(position).isDirectory()) {
             holder.type.setBackgroundResource(R.drawable.ic_folder_open);
             Theme.changeColor(holder.type.getBackground(), Theme.CONTEXT_NEGATIVE_PRIMARY);
         } else {
-            // TODO: Нужно посмотреть
-            File file = mFiles.get(position);
             if (mIconFiles.get(position) != null) {
                 holder.type.setBackground(mIconFiles.get(position));
             } else {
-                holder.type.setBackground(new ColorDrawable(Theme.CONTEXT_PRIMARY_LIGHT));
+                mIconFiles.set(position, DEFAULT_GRAY);
+                holder.type.setBackground(DEFAULT_GRAY);
                 Loaders.MusicInfoLoader musicInfoLoader =
                         new Loaders.MusicInfoLoader(holder.itemView.getContext(), mFiles.get(position).getAbsolutePath());
                 musicInfoLoader.registerListener(0, (loader, musicInfo) -> {
                     if (musicInfo != null) {
+                        Objects.requireNonNull(musicInfo);
+                        mFilesReplace.set(position, musicInfo.getArtist() + " - " + musicInfo.getTitle());
+                        holder.name.setText(mFilesReplace.get(position));
                         Loaders.AlbumCoverLoader albumCoverLoader = new Loaders.AlbumCoverLoader(
-                                holder.itemView.getContext(), file.getAbsolutePath(), Theme.getDefaultAlbumCover());
+                                loader.getContext(), musicInfo.getPath(), Theme.getDefaultAlbumCover());
                         albumCoverLoader.registerListener(0, (loader1, data) -> {
                             mIconFiles.set(position, data);
                             holder.type.setBackground(data);
@@ -75,8 +78,11 @@ public class SelectMusicFilesAdapter extends RecyclerView.Adapter<SelectMusicFil
         }
 
         holder.name.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
-        holder.name.setText(mFiles.get(position).getName());
-
+        if (mFilesReplace.get(position) != null) {
+            holder.name.setText(mFilesReplace.get(position));
+        } else {
+            holder.name.setText(mFiles.get(position).getName());
+        }
         if (mFiles.get(position).isDirectory()) {
             holder.check.setVisibility(View.GONE);
             holder.check.setChecked(false);
@@ -94,19 +100,6 @@ public class SelectMusicFilesAdapter extends RecyclerView.Adapter<SelectMusicFil
     }
 
     @Override
-    public void onViewRecycled(@NonNull SelectFreeFilesHolder holder) {
-        super.onViewRecycled(holder);
-        if (holder.getLayoutPosition() < getItemCount()) {
-            Helper.ImageIconLoader imageIconLoader = mIconLoaders.get(holder.getLayoutPosition());
-            if (holder.getLayoutPosition() > -1 && imageIconLoader != null) {
-                imageIconLoader.cancelLoadInBackground();
-                mIconFiles.set(holder.getLayoutPosition(), null);
-                mIconLoaders.set(holder.getLayoutPosition(), null);
-            }
-        }
-    }
-
-    @Override
     public int getItemCount() {
         return mFiles.size();
     }
@@ -114,15 +107,9 @@ public class SelectMusicFilesAdapter extends RecyclerView.Adapter<SelectMusicFil
     public void setItems(List<File> files) {
         mFiles.clear();
         mFiles.addAll(files);
+        mFilesReplace = new ArrayList<>(Arrays.asList(new String[files.size()]));
         mIconFiles.clear();
         mIconFiles.addAll(Arrays.asList(new BitmapDrawable[files.size()]));
-        for (int i = 0; i < mIconLoaders.size(); i++) {
-            if (mIconLoaders.get(i) != null) {
-                mIconLoaders.get(i).cancelLoadInBackground();
-            }
-        }
-        mIconLoaders.clear();
-        mIconLoaders.addAll(Arrays.asList(new Helper.ImageIconLoader[files.size()]));
         notifyDataSetChanged();
     }
 

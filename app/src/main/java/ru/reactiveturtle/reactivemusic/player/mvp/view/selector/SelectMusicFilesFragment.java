@@ -48,17 +48,13 @@ public class SelectMusicFilesFragment extends Fragment {
     private File root = null;
     private OnCheckListener mOnCheckListener;
 
-    SelectMusicFilesFragment(Context context) {
-        mSelectMusicFilesAdapter = new SelectMusicFilesAdapter();
-        if (Permissions.hasExternalStorage(context)) {
-            setRoot("/storage");
-        }
-    }
-
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mWaitDialog = new WaitDailog();
+        mSelectMusicFilesAdapter = new SelectMusicFilesAdapter();
+        if (Permissions.hasExternalStorage(getContext())) {
+            setRoot("/storage");
+        }
     }
 
     @BindView(R.id.directoryAddAll)
@@ -175,6 +171,7 @@ public class SelectMusicFilesFragment extends Fragment {
 
     @OnClick(R.id.directoryAddAll)
     protected void addAllClick() {
+        mWaitDialog = Theme.getWaitDialogBuilder().build();
         mWaitDialog.show(getFragmentManager(), "waitDialog");
         int scroll = mRecyclerView.getScrollY();
         CheckTask checkTask = new CheckTask(getContext(), true);
@@ -192,6 +189,7 @@ public class SelectMusicFilesFragment extends Fragment {
 
     @OnClick(R.id.directoryClearAll)
     protected void clearAllClick() {
+        mWaitDialog = Theme.getWaitDialogBuilder().build();
         mWaitDialog.show(getFragmentManager(), "waitDialog");
         int scroll = mRecyclerView.getScrollY();
         CheckTask checkTask = new CheckTask(getContext(), false);

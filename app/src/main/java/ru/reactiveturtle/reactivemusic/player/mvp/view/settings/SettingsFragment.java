@@ -3,6 +3,8 @@ package ru.reactiveturtle.reactivemusic.player.mvp.view.settings;
 import android.graphics.Color;
 import android.graphics.LightingColorFilter;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,10 +14,17 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.constraintlayout.widget.ConstraintSet;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdSize;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.LoadAdError;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import butterknife.BindView;
@@ -45,6 +54,8 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
     protected SeekBar mThemeBrightness;
     @BindView(R.id.themeContextSwitch)
     protected FloatingActionButton mThemeContextSwitch;
+
+    private AdView mAdView;
 
     @Nullable
     @Override
@@ -92,6 +103,83 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
     }
 
     @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        initAd();
+    }
+
+    private void initAd() {
+        if (getContext() != null && getView() != null) {
+            mAdView = new AdView(getContext());
+            mAdView.setId(android.R.id.widget_frame);
+            ConstraintLayout contentRoot = getView().findViewById(R.id.settingsRoot);
+            ConstraintSet constraintSet = new ConstraintSet();
+            constraintSet.clone(contentRoot);
+            constraintSet.connect(mAdView.getId(), ConstraintSet.TOP, contentRoot.getId(), ConstraintSet.TOP);
+            constraintSet.connect(mAdView.getId(), ConstraintSet.START, contentRoot.getId(), ConstraintSet.START);
+            constraintSet.connect(mAdView.getId(), ConstraintSet.END, contentRoot.getId(), ConstraintSet.END);
+            constraintSet.applyTo(contentRoot);
+            contentRoot.addView(mAdView);
+
+            AdSize adSize = getAdSize();
+            mAdView.setAdUnitId(getString(R.string.settings_banner_unit_id));
+            mAdView.getLayoutParams().width = adSize.getWidthInPixels(getContext());
+            mAdView.getLayoutParams().height = adSize.getHeightInPixels(getContext());
+            mAdView.setAdSize(adSize);
+            mAdView.setAdListener(new AdListener(){
+                private boolean isFirstLoad = true;
+
+                @Override
+                public void onAdFailedToLoad(LoadAdError loadAdError) {
+                    super.onAdFailedToLoad(loadAdError);
+                    System.out.println("Ad load failed");
+                    loadAd();
+                }
+
+                @Override
+                public void onAdLoaded() {
+                    System.out.println("Ad loaded");
+                    super.onAdLoaded();
+                    if (isFirstLoad) {
+                        ConstraintSet constraintSet = new ConstraintSet();
+                        constraintSet.clone(contentRoot);
+                        constraintSet.connect(R.id.settingsThemesFragment, ConstraintSet.TOP,
+                                mAdView.getId(), ConstraintSet.BOTTOM);
+                        constraintSet.applyTo(contentRoot);
+                        isFirstLoad = false;
+                    }
+                }
+
+                @Override
+                public void onAdClosed() {
+                    super.onAdClosed();
+                }
+            });
+            loadAd();
+            System.out.println("Ad initialized");
+        }
+    }
+
+    private void loadAd() {
+        AdRequest adRequest =
+                new AdRequest.Builder()
+                        .addTestDevice("FFA965BABCDD7ADE92691337BB3BA99D")
+                        .build();
+        mAdView.loadAd(adRequest);
+    }
+
+    private AdSize getAdSize() {
+        DisplayMetrics outMetrics = getResources().getDisplayMetrics();
+
+        float widthPixels = outMetrics.widthPixels;
+        float density = outMetrics.density;
+
+        int adWidth = (int) (widthPixels / density);
+
+        return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(getContext(), adWidth);
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
         unbinder.unbind();
@@ -117,6 +205,7 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
                 R.drawable.ic_sun : R.drawable.ic_moon);
         Theme.updateSeekBar(mThemeBrightness);
         Theme.updateFab(mThemeContextSwitch);
+        mThemesAdapter.notifyDataSetChanged();
     }
 
     private void initSettings() {

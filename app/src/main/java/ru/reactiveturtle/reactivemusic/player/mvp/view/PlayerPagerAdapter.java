@@ -64,7 +64,7 @@ public class PlayerPagerAdapter extends FragmentStateAdapter {
     }
 
     private PlayerPresenter mPresenter;
-    public void setPresenter(PlayerPresenter presenter) {
+    public void setPresenter(@NonNull PlayerPresenter presenter) {
         mPresenter = presenter;
     }
 

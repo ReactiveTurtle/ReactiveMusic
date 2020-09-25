@@ -10,6 +10,8 @@ import ru.reactiveturtle.reactivemusic.player.mvp.PlayerContract;
 import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerRepository;
 
 public class MusicPresener implements IMusicService.Presenter {
+    public static final int GLOBAL_MODEL_LISTENER = 0;
+
     private IMusicService.View mView;
     private IMusicService.Model mModel;
     private PlayerContract.Repository mRepository;
@@ -26,7 +28,19 @@ public class MusicPresener implements IMusicService.Presenter {
             }
         }
 
-        GlobalModel.registerListener(0, new GlobalModel.OnModelUpdateListener() {
+        GlobalModel.registerListener(GLOBAL_MODEL_LISTENER, new GlobalModel.OnModelUpdateListener() {
+            @Override
+            public void onActivityStateChanged(GlobalModel.ActivityState activityState) {
+                switch (activityState) {
+                    case RESUMED:
+                        onActivityResumed();
+                        break;
+                    case PAUSED:
+                        onActivityPaused();
+                        break;
+                }
+            }
+
             @Override
             public void onTrackChanged(MusicInfo currentTrack) {
                 mView.playTrack(currentTrack.getPath());
@@ -48,13 +62,26 @@ public class MusicPresener implements IMusicService.Presenter {
                     onPause();
                 }
             }
+
+            @Override
+            public void onRepeatTrack(boolean isRepeat) {
+                mRepository.setRepeatTrack(isRepeat);
+                onRepeatTrackChanged(isRepeat);
+            }
+
+            @Override
+            public void onPlayRandomTrack(boolean isRandom) {
+                mRepository.setPlayRandomTrack(isRandom);
+            }
         });
-        mView.playTrack(mRepository.getCurrentMusic().getPath());
+        GlobalModel.setPlayRandomTrack(mRepository.isPlayRandomTrack());
+        if (mRepository.getCurrentMusic() != null) {
+            mView.playTrack(mRepository.getCurrentMusic().getPath());
+        }
     }
 
     @Override
     public void onActivityResumed() {
-        mModel.setActivityActive(true);
         mView.hidePlayer();
         if (GlobalModel.isTrackPlay()) {
             mView.startTimer();
@@ -63,7 +90,6 @@ public class MusicPresener implements IMusicService.Presenter {
 
     @Override
     public void onActivityPaused() {
-        mModel.setActivityActive(false);
         if (GlobalModel.isTrackPlay()) {
             updateNotification();
         }
@@ -77,11 +103,26 @@ public class MusicPresener implements IMusicService.Presenter {
     @Override
     public void onPlayerPrepared(boolean isFirst, int duration) {
         GlobalModel.getCurrentTrack().setDuration(duration);
-        GlobalModel.setCurrentTrack(GlobalModel.getCurrentTrack(), 0);
+        GlobalModel.setCurrentTrack(GlobalModel.getCurrentTrack(), GLOBAL_MODEL_LISTENER);
+        System.out.println("isPrepared");
         mView.updateTrackProgress(0);
         mModel.setTrackPrepared(true);
         if (!isFirst && GlobalModel.isTrackPlay()) {
             onPlay();
+        } else if (isFirst) {
+            GlobalModel.setRepeatTrack(mRepository.isRepeatTrack());
+        }
+    }
+
+    @Override
+    public void onTrackComplete() {
+        if (GlobalModel.isPlayRandomTrack()) {
+            List<String> paths = mRepository.getPlaylist(mRepository.getCurrentPlaylist());
+            int newPosition = (int) (Math.random() * (paths.size() - 1));
+            mView.playTrack(paths.get(newPosition));
+            paths.clear();
+        } else {
+            onNextTrack();
         }
     }
 
@@ -99,8 +140,12 @@ public class MusicPresener implements IMusicService.Presenter {
 
     @Override
     public void onCloseService() {
-        GlobalModel.unregisterListener(0);
-        mView.closeService();
+        if (GlobalModel.getActivityState() == GlobalModel.ActivityState.STOPPED) {
+            GlobalModel.unregisterListener(GLOBAL_MODEL_LISTENER);
+            mView.closeService();
+        } else {
+            mView.hidePlayer();
+        }
     }
 
     @Override
@@ -116,7 +161,7 @@ public class MusicPresener implements IMusicService.Presenter {
         }
         mModel.setTrackPrepared(false);
         if (!GlobalModel.isTrackPlay()) {
-            GlobalModel.setTrackPlay(true, 0);
+            GlobalModel.setTrackPlay(true, GLOBAL_MODEL_LISTENER);
         }
         List<String> allTracks =
                 mRepository.getPlaylist(mRepository.getCurrentPlaylist());
@@ -135,7 +180,7 @@ public class MusicPresener implements IMusicService.Presenter {
 
     @Override
     public void onPlayPause() {
-        GlobalModel.setTrackPlay(!GlobalModel.isTrackPlay(), 1);
+        GlobalModel.setTrackPlay(!GlobalModel.isTrackPlay());
     }
 
     @Override
@@ -145,7 +190,7 @@ public class MusicPresener implements IMusicService.Presenter {
         }
         mModel.setTrackPrepared(false);
         if (!GlobalModel.isTrackPlay()) {
-            GlobalModel.setTrackPlay(true, 0);
+            GlobalModel.setTrackPlay(true, GLOBAL_MODEL_LISTENER);
         }
         List<String> allTracks = mRepository.getPlaylist(mRepository.getCurrentPlaylist());
         if (allTracks.size() > 0) {
@@ -164,7 +209,7 @@ public class MusicPresener implements IMusicService.Presenter {
     @Override
     public void onMusicChanged(MusicInfo musicInfo) {
         mModel.setTrackPrepared(false);
-        GlobalModel.setCurrentTrack(musicInfo, 0, 1);
+        GlobalModel.setCurrentTrack(musicInfo, GLOBAL_MODEL_LISTENER, 1);
         mView.showCurrentTrack(musicInfo);
     }
 
@@ -175,7 +220,6 @@ public class MusicPresener implements IMusicService.Presenter {
 
     @Override
     public void onRepeatTrackChanged(boolean isRepeat) {
-        mModel.setRepeatTrack(isRepeat);
         mView.repeatTrack(isRepeat);
     }
 
@@ -189,7 +233,7 @@ public class MusicPresener implements IMusicService.Presenter {
     }
 
     private void updateNotification() {
-        if (!mModel.isActivityActive()) {
+        if (GlobalModel.getActivityState() != GlobalModel.ActivityState.RESUMED) {
             mView.showPlayer(GlobalModel.getCurrentTrack() == null ?
                     MusicInfo.getDefault() : GlobalModel.getCurrentTrack());
         }

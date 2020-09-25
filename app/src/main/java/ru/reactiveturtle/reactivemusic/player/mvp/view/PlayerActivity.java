@@ -1,6 +1,7 @@
 package ru.reactiveturtle.reactivemusic.player.mvp.view;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
@@ -8,11 +9,16 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager2.widget.ViewPager2;
 
 import android.Manifest;
+import android.animation.AnimatorSet;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -20,8 +26,17 @@ import android.os.Bundle;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
+import android.util.DisplayMetrics;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationSet;
+import android.view.animation.ScaleAnimation;
+import android.view.animation.TranslateAnimation;
 import android.widget.Toast;
 
+import com.google.android.gms.ads.MobileAds;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.util.List;
@@ -31,6 +46,7 @@ import butterknife.ButterKnife;
 import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.Permissions;
 import ru.reactiveturtle.reactivemusic.R;
+import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.mvp.PlayerContract;
@@ -40,13 +56,10 @@ import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectMusicView;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectorContract;
 import ru.reactiveturtle.reactivemusic.player.service.MusicBroadcastReceiver;
 import ru.reactiveturtle.reactivemusic.player.service.MusicService;
-import ru.reactiveturtle.tools.name.NameDialog;
+import ru.reactiveturtle.tools.text.TextDialog;
 import ru.reactiveturtle.tools.selection.SelectionDialog;
 
 public class PlayerActivity extends AppCompatActivity implements PlayerContract.View {
-    public static final String PLAYLIST = "playlist";
-    public static final String TRACK = "track";
-
     private PlayerContract.Presenter mPresenter;
     private SelectorContract.View mSelectMusicView;
 
@@ -65,19 +78,38 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (Permissions.hasExternalStorage(this)) {
-            init();
-        }
     }
 
     private void init() {
-        System.out.println("Initialized");
         setContentView(R.layout.player_activity);
+        MobileAds.initialize(getApplicationContext(), initializationStatus -> {
+
+        });
+
         MusicInfo.initDefault(getResources());
         PlayerRepository playerRepository = new PlayerRepository(this);
         Theme.init(getResources(), playerRepository.getThemeColorSet(), playerRepository.isThemeContextDark());
 
         ButterKnife.bind(this);
+
+        mCreateNameDialogBuilder =
+                Theme.getNameDialogBuilder()
+                        .setHint(getResources().getString(R.string.type_playlist_name))
+                        .setPositiveText(getResources().getString(R.string.create))
+                        .setNegativeText(getResources().getString(R.string.cancel))
+                        .setTitle(getResources().getString(R.string.playlist_creation))
+                        .setTextSize(16)
+                        .setText(getResources().getString(R.string.new_playlist))
+                        .setTextSelected(true);
+
+        mRenameDialogBuilder =
+                Theme.getNameDialogBuilder()
+                        .setHint(getResources().getString(R.string.type_playlist_name))
+                        .setPositiveText(getResources().getString(R.string.save))
+                        .setNegativeText(getResources().getString(R.string.cancel))
+                        .setTitle(getResources().getString(R.string.change_playlist))
+                        .setTextSize(16)
+                        .setTextSelected(true);
 
         setSupportActionBar(mToolbar);
         mToolbar.setNavigationOnClickListener(view -> {
@@ -107,12 +139,10 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
             if (mPresenter == null) {
                 init();
             }
-            mPresenter.onView(this);
-            if (!Helper.serviceIsRunning(this, MusicService.class.getName())) {
+            if (!GlobalModel.isServiceRunning()) {
                 startService(new Intent(this, MusicService.class));
             }
-            sendIntent(MusicBroadcastReceiver.ACTIVITY_RESUMED
-            );
+            GlobalModel.setActivityActive(GlobalModel.ActivityState.RESUMED);
             mSelectMusicView.onResume();
         } else {
             Permissions.requestExternalStorage(this);
@@ -123,14 +153,14 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
     protected void onPause() {
         super.onPause();
         if (Permissions.hasExternalStorage(this)) {
-            mPresenter.onView(null);
-            sendIntent(MusicBroadcastReceiver.ACTIVITY_PAUSED);
+            GlobalModel.setActivityActive(GlobalModel.ActivityState.PAUSED);
             mSelectMusicView.onPause();
         }
     }
 
     @Override
     protected void onDestroy() {
+        GlobalModel.setActivityActive(GlobalModel.ActivityState.STOPPED);
         if (mPresenter != null) {
             mPresenter.onStop();
         }
@@ -213,15 +243,45 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
     }
 
     @Override
+    public void showDrawer() {
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        TranslateAnimation translateAnimation = new TranslateAnimation(
+                dm.widthPixels, 0f, 0f, 0f);
+
+        AnimationSet animationSet = new AnimationSet(true);
+        animationSet.setDuration(350);
+        animationSet.addAnimation(translateAnimation);
+
+        animationSet.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+                mDrawerLayout.setVisibility(View.VISIBLE);
+                mDrawerLayout.setBackgroundColor(Theme.IS_DARK ?
+                        Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY);
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                updateThemeContext();
+                mDrawerLayout.setBackground(null);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+
+            }
+        });
+        mDrawerLayout.startAnimation(animationSet);
+    }
+
+    @Override
     public void sendPlayPreviousTrack() {
-        sendIntent(MusicBroadcastReceiver.PLAY_PREVIOUS_TRACK
-        );
+        sendIntent(MusicBroadcastReceiver.PLAY_PREVIOUS_TRACK);
     }
 
     @Override
     public void sendPlayNextTrack() {
-        sendIntent(MusicBroadcastReceiver.PLAY_NEXT_TRACK
-        );
+        sendIntent(MusicBroadcastReceiver.PLAY_NEXT_TRACK);
     }
 
     @Override
@@ -234,53 +294,42 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         mPlayerViewPager.setCurrentItem(position, true);
     }
 
-    private NameDialog mNameDialog;
+    private TextDialog mTextDialog;
+
+    private TextDialog.Builder mCreateNameDialogBuilder;
 
     @Override
     public void showCreateNameDialog() {
-        NameDialog.Builder builder = Theme.getNameDialogBuilder()
-                .setHint(getResources().getString(R.string.type_playlist_name))
-                .setPositiveText(getResources().getString(R.string.create))
-                .setNegativeText(getResources().getString(R.string.cancel))
-                .setTitle(getResources().getString(R.string.playlist_creation))
-                .setTextSize(16)
-                .setText(getResources().getString(R.string.new_playlist))
-                .setTextSelected(true);
-        mNameDialog = builder.build();
-        mNameDialog.setOnClickListener(new NameDialog.OnClickListener() {
+        mTextDialog = mCreateNameDialogBuilder.build();
+        mTextDialog.setOnClickListener(new TextDialog.OnClickListener() {
             @Override
             public void onPositiveButtonClicked(String result) {
                 super.onPositiveButtonClicked(result);
                 mPresenter.onCreatePlaylist(result);
             }
         });
-        mNameDialog.show(getSupportFragmentManager(), "nameDialog");
+        mTextDialog.show(getSupportFragmentManager(), "nameDialog");
     }
+
+    private TextDialog.Builder mRenameDialogBuilder;
 
     @Override
     public void showRenameDialog(String playlistName) {
-        NameDialog.Builder builder = Theme.getNameDialogBuilder()
-                .setHint(getResources().getString(R.string.type_playlist_name))
-                .setPositiveText(getResources().getString(R.string.save))
-                .setNegativeText(getResources().getString(R.string.cancel))
-                .setTitle(getResources().getString(R.string.change_playlist))
-                .setTextSize(16)
-                .setText(playlistName)
-                .setTextSelected(true);
-        mNameDialog = builder.build();
-        mNameDialog.setOnClickListener(new NameDialog.OnClickListener() {
+        mRenameDialogBuilder.setText(playlistName);
+        mTextDialog = mRenameDialogBuilder.build();
+        mTextDialog.setOnClickListener(new TextDialog.OnClickListener() {
             @Override
             public void onPositiveButtonClicked(String result) {
                 super.onPositiveButtonClicked(result);
                 mPresenter.onRenamePlaylist(playlistName, result);
             }
         });
-        mNameDialog.show(getSupportFragmentManager(), "renameDialog");
+        mTextDialog.show(getSupportFragmentManager(), "renameDialog");
     }
 
     @Override
     public void hideNameDialog() {
-        mNameDialog.dismiss();
+        mTextDialog.dismiss();
     }
 
     @Override
@@ -382,8 +431,10 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
 
     @Override
     public void updateThemeContext() {
-        getWindow().setBackgroundDrawable(new ColorDrawable(Theme.IS_DARK ?
-                Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY));
+        if (!GlobalModel.isFirstTrackLoad()) {
+            getWindow().setBackgroundDrawable(new ColorDrawable(Theme.IS_DARK ?
+                    Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY));
+        }
         mBottomNavigationView.setBackgroundColor(Theme.IS_DARK ?
                 Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY);
         updateBottomNavigationView();
@@ -403,14 +454,6 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
                         Color.blue(Theme.CONTEXT_NEGATIVE_PRIMARY))});
         mBottomNavigationView.setItemIconTintList(colorStateList);
         mBottomNavigationView.setItemTextColor(colorStateList);
-    }
-
-    @Override
-    public void sendRepeatTrack(boolean isRepeat) {
-        Intent intent = new Intent(MusicService.class.getName());
-        intent.putExtra(Helper.ACTION_EXTRA, MusicBroadcastReceiver.REPEAT_TRACK);
-        intent.putExtra(MusicBroadcastReceiver.IS_REPEAT, isRepeat);
-        sendBroadcast(intent);
     }
 
     private void sendIntent(int action) {

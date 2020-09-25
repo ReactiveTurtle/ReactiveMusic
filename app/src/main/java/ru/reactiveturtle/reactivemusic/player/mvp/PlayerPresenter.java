@@ -6,7 +6,10 @@ import android.os.Looper;
 import androidx.annotation.NonNull;
 
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
+import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
@@ -22,6 +25,7 @@ public class PlayerPresenter implements PlayerContract.Presenter,
         MusicContract.Presenter, MusicListContract.Presenter,
         PlaylistContract.Presenter, SelectorContract.Presenter,
         SettingsContract.Presenter {
+    public static final int GLOBAL_MODEL_LISTENER = 1;
     private PlayerContract.View mView;
     private PlayerContract.Model mModel;
     private PlayerContract.Repository mRepository;
@@ -30,19 +34,30 @@ public class PlayerPresenter implements PlayerContract.Presenter,
         mModel = new PlayerModel();
         mRepository = repository;
 
-        GlobalModel.registerListener(1, new GlobalModel.OnModelUpdateListener() {
+        GlobalModel.registerListener(GLOBAL_MODEL_LISTENER, new GlobalModel.OnModelUpdateListener() {
             Handler handler = new Handler(Looper.getMainLooper());
 
             @Override
             public void onTrackChanged(MusicInfo currentTrack) {
                 onShowCurrentTrackInfo(currentTrack);
+                System.out.println(GlobalModel.isFirstTrackLoad());
+                if (GlobalModel.isFirstTrackLoad()) {
+                    GlobalModel.setFirstTrackLoad(false);
+                    System.out.println("show drawer");
+                    new Timer().schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            Helper.goToMainLooper(() -> {
+                                mView.showDrawer();
+                            });
+                        }
+                    }, 1000);
+                }
             }
 
             @Override
             public void onTrackProgressUpdate(int progress, boolean isUnlockTrackProgress) {
-                handler.post(() -> {
-                    onUpdateTrackProgress(isUnlockTrackProgress);
-                });
+                onUpdateTrackProgress(isUnlockTrackProgress);
             }
 
             @Override
@@ -51,6 +66,20 @@ public class PlayerPresenter implements PlayerContract.Presenter,
                     onPlay();
                 } else {
                     onPause();
+                }
+            }
+
+            @Override
+            public void onRepeatTrack(boolean isRepeat) {
+                if (mMusicFragment != null) {
+                    mMusicFragment.repeatTrack(isRepeat);
+                }
+            }
+
+            @Override
+            public void onPlayRandomTrack(boolean isRandom) {
+                if (mMusicFragment != null) {
+                    mMusicFragment.playRandomTrack(isRandom);
                 }
             }
         });
@@ -91,6 +120,7 @@ public class PlayerPresenter implements PlayerContract.Presenter,
     public void onMusicChanged(MusicInfo musicInfo, String playlist) {
         mRepository.setCurrentPlaylist(playlist);
         GlobalModel.setCurrentTrack(musicInfo, 1);
+        GlobalModel.setTrackPlay(true, 1);
     }
 
     @Override
@@ -129,8 +159,18 @@ public class PlayerPresenter implements PlayerContract.Presenter,
     }
 
     @Override
-    public void onView(PlayerContract.View view) {
+    public void onView(@NonNull PlayerContract.View view) {
         mView = view;
+        if (!GlobalModel.isFirstTrackLoad()) {
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    Helper.goToMainLooper(() -> {
+                        mView.showDrawer();
+                    });
+                }
+            }, 1000);
+        }
     }
 
     @Override
@@ -264,8 +304,7 @@ public class PlayerPresenter implements PlayerContract.Presenter,
 
     @Override
     public void onRepeatTrack() {
-        mModel.setRepeatTrack(!mModel.isRepeatTrack());
-        mView.sendRepeatTrack(mModel.isRepeatTrack());
+        GlobalModel.setRepeatTrack(!GlobalModel.isRepeatTrack());
     }
 
     @Override
@@ -343,6 +382,10 @@ public class PlayerPresenter implements PlayerContract.Presenter,
         } else {
             onPause();
         }
+        if (mMusicFragment != null) {
+            mMusicFragment.repeatTrack(GlobalModel.isRepeatTrack());
+            mMusicFragment.playRandomTrack(GlobalModel.isPlayRandomTrack());
+        }
     }
 
     private SettingsContract.Fragment mSettingsFragment;
@@ -365,6 +408,7 @@ public class PlayerPresenter implements PlayerContract.Presenter,
     @Override
     public void onUpdateContextTheme() {
         mRepository.setThemeContextDark(Theme.IS_DARK);
+        System.out.println("update theme context: " + GlobalModel.isFirstTrackLoad());
         mView.updateThemeContext();
         mMusicFragment.updateThemeContext();
         mPlaylistFragment.updateThemeContext();

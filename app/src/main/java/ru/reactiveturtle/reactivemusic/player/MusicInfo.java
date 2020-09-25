@@ -37,13 +37,13 @@ public class MusicInfo {
         mAlbum = album;
         mArtist = artist;
         mTitle = title;
-        if (mAlbum.equals("<unknown>")) {
+        if (mAlbum == null || mAlbum.equals("<unknown>")) {
             mAlbum = UNKNOWN_ALBUM;
         }
-        if (mArtist.equals("<unknown>")) {
+        if (mArtist == null || mArtist.equals("<unknown>")) {
             mArtist = UNKNOWN_ARTIST;
         }
-        if (mTitle.equals("<unknown>")) {
+        if (mTitle == null || mTitle.equals("<unknown>")) {
             mTitle = UNKNOWN_TRACK;
         }
     }

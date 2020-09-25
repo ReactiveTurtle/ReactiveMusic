@@ -1,7 +1,16 @@
 package ru.reactiveturtle.reactivemusic.player.mvp.view.music;
 
 import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.RadialGradient;
+import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -17,16 +26,22 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 import butterknife.Unbinder;
+import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.BaseMusicContract;
 import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ColorSet;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 
 public class MusicFragment extends Fragment implements MusicContract.Fragment {
@@ -60,13 +75,14 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
     @BindView(R.id.playerTrackName)
     protected TextView mPlayerTrackName;
 
+    @BindView(R.id.playerRandomTrack)
+    protected CheckBox mRandomTrack;
     @BindView(R.id.playerPreviousTrack)
     protected Button mPreviousTrack;
     @BindView(R.id.playerPlayPause)
     protected Button mPlayPause;
     @BindView(R.id.playerNextTrack)
     protected Button mNextTrack;
-
     @BindView(R.id.playerRepeatTrack)
     protected CheckBox mRepeatTrack;
 
@@ -122,6 +138,10 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
         mPlayerTrackName.setBackgroundColor(color);
         mTrackProgress.setBackgroundColor(color);
         mTrackDuration.setBackgroundColor(color);
+
+        int albumImageSize = (int) (getResources().getDisplayMetrics().widthPixels * 0.5f);
+        mPlayerAlbumImage.getLayoutParams().width = albumImageSize;
+        mPlayerAlbumImage.getLayoutParams().height = albumImageSize;
         return view;
     }
 
@@ -179,8 +199,7 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
 
         mPlayerTrackAlbum.setText(musicInfo.getAlbum());
         mPlayerTrackArtist.setText(musicInfo.getArtist());
-        mPlayerAlbumImage.setBackground(
-                new BitmapDrawable(getResources(), musicInfo.getAlbumImage().getBitmap()));
+        mPlayerAlbumImage.setBackground(Theme.getDefaultAlbumCoverCopy());
         mPlayerTrackName.setText(musicInfo.getTitle());
 
         mSeekBar.setMax(musicInfo.getDuration());
@@ -205,8 +224,11 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
     @Override
     public void updateTheme() {
         Theme.updateSeekBar(mSeekBar);
+        mRandomTrack.setBackground(Theme.getCheckDrawable(
+                R.drawable.ic_random, R.drawable.ic_random, VectorDrawableCompat.class));
         mRepeatTrack.setBackground(Theme.getCheckDrawable(
                 R.drawable.ic_repeat_all, R.drawable.ic_repeat_one, VectorDrawableCompat.class));
+        mPlayerAlbumImage.setBackground(Theme.getDefaultAlbumCoverCopy());
     }
 
     @Override
@@ -230,10 +252,12 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
         mTrackProgress.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
         mTrackDuration.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
 
+        mRandomTrack.setBackground(Theme.getCheckDrawable(
+                R.drawable.ic_random, R.drawable.ic_random, VectorDrawableCompat.class));
         mPreviousTrack.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_previous));
         mNextTrack.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_next));
-        mRepeatTrack.setBackground(Theme.getCheckDrawable(R.drawable.ic_repeat_all, R.drawable.ic_repeat_one,
-                VectorDrawableCompat.class));
+        mRepeatTrack.setBackground(Theme.getCheckDrawable(
+                R.drawable.ic_repeat_all, R.drawable.ic_repeat_one, VectorDrawableCompat.class));
     }
 
     @Override
@@ -244,6 +268,79 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
     @Override
     public void repeatTrack(boolean isRepeat) {
         mRepeatTrack.setChecked(isRepeat);
+    }
+
+    @Override
+    public void playRandomTrack(boolean isRandom) {
+        mRandomTrack.setChecked(isRandom);
+    }
+
+    private Timer animTimer;
+
+    @OnClick(R.id.playerAlbumImage)
+    protected void albumImageClick() {
+        List<ColorSet> colorSets = Theme.getColors(13);
+        if (colorSets != null) {
+            final int[] i = {0, 0};
+            if (animTimer != null) {
+                animTimer.cancel();
+            }
+            animTimer = new Timer();
+            animTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    if (i[0] < colorSets.size()) {
+                        if (GlobalModel.getCurrentTrack() != null) {
+                            Bitmap original = Bitmap.createScaledBitmap(GlobalModel.getCurrentTrack().getAlbumImage().getBitmap(),
+                                    512, 512, true);
+                            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                            Bitmap bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+                            paint.setColor(colorSets.get(colorSets.size() - i[0] - 1).getPrimary());
+
+                            int[] colors = new int[colorSets.size()];
+                            for (int j = 0; j < i[0]; j++) {
+                                colors[j] = Color.TRANSPARENT;
+                            }
+
+                            for (int j = i[0]; j < colors.length; j++) {
+                                colors[j] = colorSets.get(j - i[0]).getPrimary();
+                            }
+
+                            float[] positions = new float[]{
+                                    0, 1f / 15, 2f / 15,
+                                    3f / 15, 4f / 15, 5f / 15,
+                                    6f / 15, 7f / 15, 8f / 15,
+                                    9f / 15, 10f / 15, 11f / 15,
+                                    12f / 15, 13f / 15, 14f / 15,
+                                    1f
+                            };
+                            Canvas canvas = new Canvas(bitmap);
+                            canvas.drawBitmap(original, (bitmap.getWidth() - original.getWidth()) / 2f,
+                                    (bitmap.getHeight() - original.getHeight()) / 2f, paint);
+                            paint.setShader(new RadialGradient(256, 256, 256,
+                                    colors,
+                                    positions, Shader.TileMode.CLAMP));
+                            canvas.drawRect(new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight()), paint);
+                            mPlayerAlbumImage.setBackground(new BitmapDrawable(getResources(), bitmap));
+                        }
+                        i[0]++;
+                    } else {
+                        Theme.updateDefaultAlbumCover();
+                        if (GlobalModel.getCurrentTrack() != null) {
+                            BitmapDrawable cover = GlobalModel.getCurrentTrack().getAlbumImage();
+                            mPlayerAlbumImage.setBackground(new BitmapDrawable(getResources(),
+                                    cover.getBitmap().copy(Bitmap.Config.ARGB_8888, false)));
+                        }
+                        cancel();
+                    }
+                }
+            }, 0, 17);
+        }
+    }
+
+    @OnClick(R.id.playerRandomTrack)
+    protected void switchPlayRandomTrack() {
+        GlobalModel.setPlayRandomTrack(!GlobalModel.isPlayRandomTrack());
     }
 
     private String getTime(int millis) {

@@ -11,6 +11,8 @@ public interface MusicContract {
         void updateTrackProgress(int progress);
 
         void repeatTrack(boolean isRepeat);
+
+        void playRandomTrack(boolean isRandom);
     }
 
     interface Presenter extends BaseMusicContract.FragmentPresenter {

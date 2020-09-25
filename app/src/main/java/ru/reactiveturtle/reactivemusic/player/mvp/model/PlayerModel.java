@@ -4,17 +4,6 @@ import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.PlayerContract;
 
 public class PlayerModel implements PlayerContract.Model {
-    private boolean mIsRepeatTrack = false;
-    @Override
-    public void setRepeatTrack(boolean isRepeat) {
-        mIsRepeatTrack = isRepeat;
-    }
-
-    @Override
-    public boolean isRepeatTrack() {
-        return mIsRepeatTrack;
-    }
-
     private int mSelectedPage = 0;
     @Override
     public void setSelectedPage(int position) {

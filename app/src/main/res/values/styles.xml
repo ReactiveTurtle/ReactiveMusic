@@ -3,6 +3,7 @@
     <style name="AppThemeLight" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="bottomSheetDialogTheme">@style/NameDialogStyleLight</item>
         <item name="colorAccent">@android:color/holo_blue_light</item>
+        <item name="android:windowBackground">@drawable/background_splash</item>
     </style>
 
     <style name="NameDialogStyleLight" parent="Theme.MaterialComponents.Light.BottomSheetDialog">

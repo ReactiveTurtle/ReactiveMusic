@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LightingColorFilter;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
@@ -24,6 +25,7 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.FloatRange;
 import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat;
 
@@ -34,7 +36,8 @@ import java.util.List;
 
 import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
-import ru.reactiveturtle.tools.name.NameDialog;
+import ru.reactiveturtle.tools.WaitDailog;
+import ru.reactiveturtle.tools.text.TextDialog;
 
 public class Theme {
     private static Resources RESOURCES;
@@ -48,7 +51,7 @@ public class Theme {
     public static boolean IS_DARK = false;
     public static boolean IS_NEON_ENABLED = false;
 
-    public static void init(@NonNull Resources resources, ColorSet colorSet, boolean isDark) {
+    public static void init(@NonNull Resources resources, @NonNull ColorSet colorSet, boolean isDark) {
         RESOURCES = resources;
         DEFAULT_ALBUM_COVER = Helper.getDefaultAlbumCover(resources);
         Theme.colorSet = colorSet;
@@ -87,7 +90,15 @@ public class Theme {
         return DEFAULT_ALBUM_COVER;
     }
 
-    private static ColorSet colorSet;
+    @NonNull
+    public static BitmapDrawable getDefaultAlbumCoverCopy() {
+        return new BitmapDrawable(RESOURCES, DEFAULT_ALBUM_COVER.getBitmap()
+                .copy(Bitmap.Config.ARGB_8888, false));
+    }
+
+    private static ColorSet colorSet = new ColorSet(Color.parseColor("#0039cb")
+            + "|" + Color.parseColor("#2962ff")
+            + "|" + Color.parseColor("#768fff"));
 
     public static void update(@NonNull ColorSet colorSet,
                               @FloatRange(from = 0, to = 1) float trackProgress) {
@@ -102,7 +113,8 @@ public class Theme {
         Canvas canvas = new Canvas(note);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(Theme.CONTEXT_PRIMARY);
-        if (isVeryBright(colorSet.getPrimaryLight())) {
+        int backColor = colorSet.getPrimary();
+        if (isVeryBright(backColor)) {
             paint.setColor(Color.BLACK);
         } else {
             paint.setColor(Color.WHITE);
@@ -117,9 +129,9 @@ public class Theme {
 
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
-        paint.setColor(colorSet.getPrimary());
+        paint.setColor(backColor);
         canvas.drawRoundRect(new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight()),
-                64, 64, paint);
+                0, 0, paint);
         canvas.drawBitmap(note, (bitmap.getWidth() - note.getWidth()) / 2f,
                 (bitmap.getHeight() - note.getHeight()) / 2f, paint);
     }
@@ -147,6 +159,7 @@ public class Theme {
         return colorSet;
     }
 
+    @Nullable
     public static List<ColorSet> getColors(@IntRange(from = 0, to = 13) int brightness) {
         String palette = null;
         switch (brightness) {
@@ -193,15 +206,18 @@ public class Theme {
                 palette = ColorPalette.M_A700;
                 break;
         }
-        String[] paletteColors = palette.split("\\|");
-        List<ColorSet> colors = new ArrayList<>();
-        for (int i = 0; i < paletteColors.length; i += 3) {
-            colors.add(new ColorSet(
-                    Color.parseColor("#" + paletteColors[i]),
-                    Color.parseColor("#" + paletteColors[i + 1]),
-                    Color.parseColor("#" + paletteColors[i + 2])));
+        if (palette != null) {
+            List<ColorSet> colors = new ArrayList<>();
+            String[] paletteColors = palette.split("\\|");
+            for (int i = 0; i < paletteColors.length; i += 3) {
+                colors.add(new ColorSet(
+                        Color.parseColor("#" + paletteColors[i]),
+                        Color.parseColor("#" + paletteColors[i + 1]),
+                        Color.parseColor("#" + paletteColors[i + 2])));
+            }
+            return colors;
         }
-        return colors;
+        return null;
     }
 
     @NonNull
@@ -254,6 +270,58 @@ public class Theme {
     }
 
     @NonNull
+    public static Drawable getColorSetDrawable(@NonNull ColorSet colorSet) {
+        Bitmap bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+        Bitmap colorSetBitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setStyle(Paint.Style.FILL);
+        Canvas canvas = new Canvas(colorSetBitmap);
+
+        float y = 128;
+        Path path = new Path();
+        path.moveTo(256, 256);
+        path.lineTo(0, y);
+        path.lineTo(0, 0);
+        path.lineTo(512, 0);
+        path.lineTo(512, y);
+        path.lineTo(256, 256);
+        paint.setColor(colorSet.getPrimaryDark());
+        canvas.drawPath(path, paint);
+
+        path = new Path();
+        path.moveTo(256, 256);
+        path.lineTo(256, 512);
+        path.lineTo(0, 512);
+        path.lineTo(0, y);
+        path.lineTo(256, 256);
+        paint.setColor(colorSet.getPrimary());
+        canvas.drawPath(path, paint);
+
+        path = new Path();
+        path.moveTo(256, 256);
+        path.lineTo(512, y);
+        path.lineTo(512, 512);
+        path.lineTo(256, 512);
+        path.lineTo(256, 256);
+        paint.setColor(colorSet.getPrimaryLight());
+        canvas.drawPath(path, paint);
+
+        canvas = new Canvas(bitmap);
+        paint.setColor(Color.BLACK);
+        canvas.drawCircle(256, 256, 256, paint);
+        paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
+        canvas.drawBitmap(colorSetBitmap, 0, 0, paint);
+        paint.setXfermode(null);
+
+        paint.setColor(CONTEXT_NEGATIVE_SECONDARY);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(8);
+        canvas.drawCircle(256, 256, 252, paint);
+
+        return new BitmapDrawable(RESOURCES, bitmap);
+    }
+
+    @NonNull
     public static Drawable getDefaultButtonDrawable(@DrawableRes int drawableId) {
         Drawable back = ResourcesCompat.getDrawable(
                 RESOURCES, R.drawable.player_default_button, null);
@@ -276,19 +344,27 @@ public class Theme {
         Drawable frontFalse = null;
         Drawable frontTrue = null;
         if (c.equals(BitmapDrawable.class)) {
-            frontFalse = new BitmapDrawable(RESOURCES,
-                    ((BitmapDrawable) ResourcesCompat.getDrawable(RESOURCES, drawableIdFalse, null)).getBitmap());
-            frontTrue = new BitmapDrawable(RESOURCES,
-                    ((BitmapDrawable) ResourcesCompat.getDrawable(RESOURCES, drawableIdTrue, null)).getBitmap());
-            changeColor(frontFalse, CONTEXT_LIGHT);
-            changeColor(frontTrue, getColorSet().getPrimary());
+            frontFalse = ResourcesCompat.getDrawable(RESOURCES, drawableIdFalse, null);
+            frontTrue = ResourcesCompat.getDrawable(RESOURCES, drawableIdTrue, null);
+            if (frontFalse != null) {
+                frontFalse.mutate();
+                changeColor(frontFalse,
+                        setAlpha("8A", CONTEXT_NEGATIVE_PRIMARY));
+            }
+            if (frontTrue != null) {
+                frontTrue.mutate();
+                changeColor(frontTrue, getColorSet().getPrimary());
+            }
         } else if (c.equals(VectorDrawableCompat.class)) {
             frontFalse = VectorDrawableCompat.create(RESOURCES, drawableIdFalse, null);
             frontTrue = VectorDrawableCompat.create(RESOURCES, drawableIdTrue, null);
             if (frontFalse != null) {
-                ((VectorDrawableCompat) frontFalse).setTint(CONTEXT_NEGATIVE_SECONDARY);
+                frontFalse.mutate();
+                ((VectorDrawableCompat) frontFalse).setTint(
+                        setAlpha("8A", CONTEXT_NEGATIVE_PRIMARY));
             }
             if (frontTrue != null) {
+                frontTrue.mutate();
                 ((VectorDrawableCompat) frontTrue).setTint(getColorSet().getPrimary());
             }
         }
@@ -320,8 +396,8 @@ public class Theme {
     }
 
     @NonNull
-    public static NameDialog.Builder getNameDialogBuilder() {
-        return new NameDialog.Builder()
+    public static TextDialog.Builder getNameDialogBuilder() {
+        return new TextDialog.Builder()
                 .setBackground(new ColorDrawable(Theme.IS_DARK ? Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY))
                 .setEditTextBackground(Helper.getRoundDrawable(Theme.CONTEXT_LIGHT,
                         RESOURCES.getDimensionPixelSize(R.dimen.big)))
@@ -333,5 +409,13 @@ public class Theme {
                 .setPositiveTextColor(Theme.isVeryBright(Theme.getColorSet().getPrimary()) ?
                         Color.BLACK : Color.WHITE)
                 .setPositiveBackground(Theme.getButtonDrawable(Theme.getColorSet().getPrimary()));
+    }
+
+    public static WaitDailog.Builder getWaitDialogBuilder() {
+        return new WaitDailog.Builder()
+                .setBackground(new ColorDrawable(Theme.IS_DARK ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY))
+                .setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY)
+                .setProgressColor(!IS_DARK && Theme.isVeryBright(Theme.getColorSet().getPrimary()) ?
+                        Color.BLACK : Theme.getColorSet().getPrimary());
     }
 }

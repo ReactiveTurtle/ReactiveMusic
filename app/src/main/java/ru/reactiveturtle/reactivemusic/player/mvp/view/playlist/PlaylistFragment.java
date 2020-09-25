@@ -158,7 +158,7 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
 
     @Override
     public void updateThemeContext() {
-        mPlaylistEmpty.setTextColor(Theme.setAlpha("8A", Theme.CONTEXT_NEGATIVE_SECONDARY));
+        mPlaylistEmpty.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
         mTitle.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
         mInfo.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
 

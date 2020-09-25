@@ -1,17 +1,16 @@
 package ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme;
 
 import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -73,23 +72,19 @@ public class ThemesAdapter extends RecyclerView.Adapter<ThemesAdapter.ThemeViewH
         }
 
         private void showColorSet(int index, ConstraintLayout item) {
+            View colorSetView = item.findViewById(R.id.themeColorSet);
+            Drawable background = null;
             if (index < mColorSets.size()) {
                 ColorSet colorSet = mColorSets.get(index);
-                View primaryDark = item.findViewById(R.id.themePrimaryDark);
-                View primary = item.findViewById(R.id.themePrimary);
-                View primaryLight = item.findViewById(R.id.themePrimaryLight);
-
-                primaryDark.setBackgroundColor(colorSet.getPrimaryDark());
-                primary.setBackgroundColor(colorSet.getPrimary());
-                primaryLight.setBackgroundColor(colorSet.getPrimaryLight());
+                background = Theme.getColorSetDrawable(colorSet);
 
                 Objects.requireNonNull(onItemClickListener);
                 item.findViewById(R.id.themeClicker).setOnClickListener(view -> {
                     onItemClickListener.onItemClick(colorSet);
                 });
             }
+            colorSetView.setBackground(background);
         }
-
     }
 
     private OnItemClickListener onItemClickListener;

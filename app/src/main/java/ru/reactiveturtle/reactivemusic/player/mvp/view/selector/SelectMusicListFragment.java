@@ -39,7 +39,6 @@ public class SelectMusicListFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mWaitDialog = new WaitDailog();
     }
 
     @BindView(R.id.selectMusicAddAll)
@@ -99,6 +98,7 @@ public class SelectMusicListFragment extends Fragment {
 
     @OnClick(R.id.selectMusicAddAll)
     protected void addAllClick() {
+        mWaitDialog = Theme.getWaitDialogBuilder().build();
         mWaitDialog.show(getFragmentManager(), "waitDialog");
         int scroll = mRecyclerView.getScrollY();
         CheckTask checkTask = new CheckTask(getContext(), true);
@@ -116,6 +116,7 @@ public class SelectMusicListFragment extends Fragment {
 
     @OnClick(R.id.selectMusicClearAll)
     protected void clearAllClick() {
+        mWaitDialog = Theme.getWaitDialogBuilder().build();
         mWaitDialog.show(getFragmentManager(), "waitDialog");
         int scroll = mRecyclerView.getScrollY();
         CheckTask checkTask = new CheckTask(getContext(), false);

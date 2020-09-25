@@ -64,11 +64,11 @@ public interface PlayerContract {
     interface View {
         void pressBack();
 
+        void showDrawer();
+
         void sendPlayPreviousTrack();
 
         void sendPlayNextTrack();
-
-        void sendRepeatTrack(boolean isRepeat);
 
         void unlockTrackProgress();
 

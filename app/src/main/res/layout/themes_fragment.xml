@@ -9,6 +9,8 @@
         android:id="@+id/themesRecyclerView"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
         app:layout_constraintBottom_toTopOf="@+id/themeBrightess"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -35,10 +37,11 @@
         android:layout_marginLeft="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginRight="16dp"
+        android:layout_marginBottom="16dp"
         android:max="13"
         android:padding="8dp"
-        android:progress="6"
-        app:layout_constraintBottom_toBottomOf="@+id/themeContextSwitch"
+        android:progress="13"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/themeContextSwitch"
         app:layout_constraintStart_toEndOf="@+id/themeName" />
 

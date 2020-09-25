@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="player_default_button_size">72dp</dimen>
+    <dimen name="player_default_button_size">64dp</dimen>
+    <dimen name="toolbar_height">56dp</dimen>
     <dimen name="middle">16dp</dimen>
     <dimen name="big">32dp</dimen>
     <dimen name="small">8dp</dimen>

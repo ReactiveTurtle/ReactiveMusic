@@ -13,6 +13,7 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 import androidx.annotation.NonNull;
@@ -51,12 +52,21 @@ public class MusicService extends Service implements IMusicService.View {
     @Override
     public void onCreate() {
         super.onCreate();
+        GlobalModel.setServiceRunning(true);
+        mAudioFocusListener = new AudioFocusListener(mMusicPlayer, "player");
         mMusicPlayer = new MediaPlayer();
         mMusicPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
 
         mNotificationManager = (NotificationManager) getApplicationContext().getSystemService(NOTIFICATION_SERVICE);
-        // TODO: Исправить
-        mPresenter = new MusicPresener(this, new PlayerRepository(this));
+
+        PlayerRepository playerRepository = new PlayerRepository(this);
+        if (playerRepository.getCurrentMusic() == null) {
+            List<String> paths = Helper.getAllTracksPathsInfo(this);
+            if (paths.size() > 0) {
+                playerRepository.setCurrentMusic(new MusicInfo(paths.get(0)));
+            }
+        }
+        mPresenter = new MusicPresener(this, playerRepository);
 
         mPlayerReceiver = new MusicBroadcastReceiver(mPresenter);
         registerReceiver(mPlayerReceiver, new IntentFilter(getClass().getName()));
@@ -71,26 +81,70 @@ public class MusicService extends Service implements IMusicService.View {
         mMusicPlayer.setOnPreparedListener(mediaPlayer -> {
             updateTrackProgress(mediaPlayer.getCurrentPosition());
             mPresenter.onPlayerPrepared(true, mMusicPlayer.getDuration());
-            mMusicPlayer.setOnPreparedListener(mediaPlayer1 ->
-                    mPresenter.onPlayerPrepared(false, mMusicPlayer.getDuration()));
+            mMusicPlayer.setOnPreparedListener(mediaPlayer1 -> {
+                mPresenter.onPlayerPrepared(false, mMusicPlayer.getDuration());
+            });
         });
         mMusicPlayer.setOnCompletionListener(mediaPlayer -> {
-            mPresenter.onNextTrack();
+            mPresenter.onTrackComplete();
         });
     }
 
     private Intent mServiceIntent;
+    private AudioManager mAudioManager;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         mServiceIntent = intent;
         Intent receiverIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 1, receiverIntent, 0);
-        AudioManager mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
             mAudioManager.registerMediaButtonEventReceiver(pendingIntent);
         }
         return START_NOT_STICKY;
+    }
+
+    private class AudioFocusListener implements AudioManager.OnAudioFocusChangeListener {
+
+        String label = "";
+        MediaPlayer mp;
+
+        public AudioFocusListener(MediaPlayer mp, String label) {
+            this.label = label;
+            this.mp = mp;
+        }
+
+        @Override
+        public void onAudioFocusChange(int focusChange) {
+            String event = "";
+            switch (focusChange) {
+                case AudioManager.AUDIOFOCUS_LOSS:
+                    if (GlobalModel.isTrackPlay()) {
+                        mPresenter.onPlayPause();
+                    }
+                    event = "AUDIOFOCUS_LOSS";
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                    event = "AUDIOFOCUS_LOSS_TRANSIENT";
+                    if (mMusicPlayer.isPlaying()) {
+                        mMusicPlayer.pause();
+                    }
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                    event = "AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK";
+                    mMusicPlayer.setVolume(0.4f, 0.4f);
+                    break;
+                case AudioManager.AUDIOFOCUS_GAIN:
+                    event = "AUDIOFOCUS_GAIN";
+                    mMusicPlayer.setVolume(1f, 1f);
+                    if (GlobalModel.isTrackPlay()) {
+                        mMusicPlayer.start();
+                    }
+                    break;
+            }
+            System.out.println(label + " onAudioFocusChange: " + event);
+        }
     }
 
     @Nullable
@@ -102,20 +156,22 @@ public class MusicService extends Service implements IMusicService.View {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mPresenter.onDestroy();
-        mMusicPlayer.release();
     }
 
     @Override
     public void showCurrentTrack(MusicInfo musicInfo) {
         try {
             if (musicInfo != null) {
-                if (GlobalModel.isTrackPlay()) {
-                    mMusicPlayer.pause();
+                if (mMusicPlayer.isPlaying()) {
+                    mMusicPlayer.stop();
                 }
+                Log.e("DEBUG", "flag 1");
                 mMusicPlayer.reset();
+                Log.e("DEBUG", "flag 2");
                 mMusicPlayer.setDataSource(musicInfo.getPath());
-                mMusicPlayer.prepare();
+                Log.e("DEBUG", "flag 3");
+                mMusicPlayer.prepareAsync();
+                Log.e("DEBUG", "flag 4");
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -184,13 +240,17 @@ public class MusicService extends Service implements IMusicService.View {
     @Override
     public void hidePlayer() {
         stopForeground(true);
+        mPlayerReceiver.isActivityShowed = false;
     }
 
     private Timer mProgressUpdater;
+    private AudioFocusListener mAudioFocusListener;
 
     @Override
     public void startMusic() {
         mMusicPlayer.start();
+        mAudioManager.requestAudioFocus(mAudioFocusListener,
+                AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
         startTimer();
     }
 
@@ -216,6 +276,7 @@ public class MusicService extends Service implements IMusicService.View {
     @Override
     public void pauseMusic() {
         mMusicPlayer.pause();
+        mAudioManager.abandonAudioFocus(mAudioFocusListener);
         stopTimer();
     }
 
@@ -245,12 +306,9 @@ public class MusicService extends Service implements IMusicService.View {
 
     @Override
     public void repeatTrack(boolean isRepeat) {
+        System.out.println("Is repeat: " + isRepeat);
         mMusicPlayer.setLooping(isRepeat);
-    }
-
-    @Override
-    public void sendRepeatTrack(boolean isRepeat) {
-
+        System.out.println("Is looping: " + mMusicPlayer.isLooping());
     }
 
     @Override
@@ -261,13 +319,23 @@ public class MusicService extends Service implements IMusicService.View {
         startActivity(intent);
     }
 
+    Loaders.MusicInfoLoader musicInfoLoader;
+    Loaders.AlbumCoverLoader albumCoverLoader;
     @Override
-    public void playTrack(String path) {
-        Loaders.MusicInfoLoader musicInfoLoader = new Loaders.MusicInfoLoader(this, path);
+    public void playTrack(@NonNull String path) {
+        if (musicInfoLoader != null) {
+            musicInfoLoader.cancelLoad();
+        }
+        musicInfoLoader = new Loaders.MusicInfoLoader(this, path);
         musicInfoLoader.registerListener(0, (loader, data) -> {
-            Loaders.AlbumCoverLoader albumCoverLoader =
+            musicInfoLoader = null;
+            if (albumCoverLoader != null) {
+                albumCoverLoader.cancelLoad();
+            }
+            albumCoverLoader =
                     new Loaders.AlbumCoverLoader(this, path, Theme.getDefaultAlbumCover());
             albumCoverLoader.registerListener(0, (loader1, data1) -> {
+                albumCoverLoader = null;
                 data.setAlbumImage(data1);
                 mPresenter.onMusicChanged(data);
             });
@@ -281,12 +349,18 @@ public class MusicService extends Service implements IMusicService.View {
         unregisterReceiver(mPlayerReceiver);
         unregisterReceiver(mHeadphoneMuteReceiver);
         hidePlayer();
-        stopSelf();
         stopService(mServiceIntent);
+        mPresenter.onPause();
+        mPresenter.onDestroy();
+        mMusicPlayer.release();
+        mPresenter.onPlayPause();
+        GlobalModel.setServiceRunning(false);
+        stopSelf();
     }
 
     public void sendUpdateTrackProgress(int progress, boolean isUnlockProgressUpdate) {
-        GlobalModel.setTrackProgress(progress, isUnlockProgressUpdate, 0);
+        GlobalModel.setTrackProgress(progress, isUnlockProgressUpdate,
+                MusicPresener.GLOBAL_MODEL_LISTENER);
     }
 
     private NotificationCompat.Builder mServiceNotificationBuilder;
