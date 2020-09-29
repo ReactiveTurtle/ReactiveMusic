@@ -162,9 +162,7 @@ public class MusicService extends Service implements IMusicService.View {
     public void showCurrentTrack(MusicInfo musicInfo) {
         try {
             if (musicInfo != null) {
-                if (mMusicPlayer.isPlaying()) {
-                    mMusicPlayer.stop();
-                }
+                stopTimer();
                 Log.e("DEBUG", "flag 1");
                 mMusicPlayer.reset();
                 Log.e("DEBUG", "flag 2");
@@ -321,6 +319,7 @@ public class MusicService extends Service implements IMusicService.View {
 
     Loaders.MusicInfoLoader musicInfoLoader;
     Loaders.AlbumCoverLoader albumCoverLoader;
+
     @Override
     public void playTrack(@NonNull String path) {
         if (musicInfoLoader != null) {

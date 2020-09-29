@@ -140,12 +140,8 @@ public class MusicPresener implements IMusicService.Presenter {
 
     @Override
     public void onCloseService() {
-        if (GlobalModel.getActivityState() == GlobalModel.ActivityState.STOPPED) {
-            GlobalModel.unregisterListener(GLOBAL_MODEL_LISTENER);
-            mView.closeService();
-        } else {
-            mView.hidePlayer();
-        }
+        GlobalModel.unregisterListener(GLOBAL_MODEL_LISTENER);
+        mView.closeService();
     }
 
     @Override
