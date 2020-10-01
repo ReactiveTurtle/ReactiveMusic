@@ -32,7 +32,7 @@ public class MusicInfo {
     }
 
     public MusicInfo(@NonNull String currentMusicPath, String album,
-                     String artist, String title) {
+                     String artist, String title, int duration) {
         mPath = currentMusicPath;
         mAlbum = album;
         mArtist = artist;
@@ -46,6 +46,7 @@ public class MusicInfo {
         if (mTitle == null || mTitle.equals("<unknown>")) {
             mTitle = UNKNOWN_TRACK;
         }
+        mDuration = duration;
     }
 
     public MusicInfo(@NonNull String currentMusicPath, int duration) {
@@ -55,7 +56,7 @@ public class MusicInfo {
 
     public static MusicInfo getDefault() {
         return new MusicInfo(TRACKS_NOT_FOUND, TRACKS_NOT_FOUND,
-                TRACKS_NOT_FOUND, TRACKS_NOT_FOUND);
+                TRACKS_NOT_FOUND, TRACKS_NOT_FOUND, 0);
     }
 
     public void setPath(@NonNull String path) {

@@ -30,6 +30,7 @@
         android:layout_marginRight="16dp"
         android:ellipsize="end"
         android:maxLines="1"
+        android:textSize="14sp"
         app:layout_constraintBottom_toBottomOf="@+id/player_music_list_item_album"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/player_music_list_item_album"
@@ -51,9 +52,11 @@
         android:id="@+id/playerMusicListBottomDivider"
         android:layout_width="0dp"
         android:layout_height="1px"
+        android:layout_marginStart="8dp"
+        android:layout_marginLeft="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@+id/player_music_list_item_title"
-        app:layout_constraintStart_toStartOf="@+id/player_music_list_item_title" />
+        app:layout_constraintStart_toEndOf="@+id/player_music_list_item_album" />
 
     <View
         android:id="@+id/player_music_list_item_clicker"
@@ -62,9 +65,7 @@
         android:background="@drawable/player_music_list_item_back"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0" />
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

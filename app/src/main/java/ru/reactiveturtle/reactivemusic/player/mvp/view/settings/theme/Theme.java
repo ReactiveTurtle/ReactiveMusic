@@ -92,8 +92,7 @@ public class Theme {
 
     @NonNull
     public static BitmapDrawable getDefaultAlbumCoverCopy() {
-        return new BitmapDrawable(RESOURCES, DEFAULT_ALBUM_COVER.getBitmap()
-                .copy(Bitmap.Config.ARGB_8888, false));
+        return new BitmapDrawable(RESOURCES, DEFAULT_ALBUM_COVER.getBitmap());
     }
 
     private static ColorSet colorSet = new ColorSet(Color.parseColor("#0039cb")

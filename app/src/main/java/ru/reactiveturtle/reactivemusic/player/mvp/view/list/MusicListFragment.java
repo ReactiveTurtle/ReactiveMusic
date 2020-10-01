@@ -22,6 +22,7 @@ import butterknife.OnLongClick;
 import butterknife.Unbinder;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.BaseMusicContract;
+import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
@@ -36,6 +37,12 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
         MusicListFragment fragment = new MusicListFragment();
         fragment.setArguments(args);
         return fragment;
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mPresenter = GlobalModel.PLAYER_PRESENTER;
     }
 
     @BindView(R.id.player_music_list_recycler_view)
@@ -112,11 +119,6 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
     }
 
     private MusicListContract.Presenter mPresenter;
-
-    @Override
-    public void setPresenter(@NonNull BaseMusicContract.FragmentPresenter presenter) {
-        mPresenter = (MusicListContract.Presenter) presenter;
-    }
 
     @Override
     public void showCurrentTrack(MusicInfo musicInfo) {

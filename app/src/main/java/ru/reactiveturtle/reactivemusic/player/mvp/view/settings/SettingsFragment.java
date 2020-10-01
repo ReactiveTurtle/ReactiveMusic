@@ -57,6 +57,12 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
 
     private AdView mAdView;
 
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mPresenter = GlobalModel.PLAYER_PRESENTER;
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -186,11 +192,6 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
     }
 
     private SettingsContract.Presenter mPresenter;
-
-    @Override
-    public void setPresenter(@NonNull BaseMusicContract.FragmentPresenter presenter) {
-        mPresenter = (SettingsContract.Presenter) presenter;
-    }
 
     @Override
     public void updateTheme() {

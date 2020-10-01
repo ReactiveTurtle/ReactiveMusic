@@ -54,18 +54,12 @@ public class PlayerPagerAdapter extends FragmentStateAdapter {
                 );
         }
         fragments[position] = fragment;
-        fragment.setPresenter(mPresenter);
         return (Fragment) fragment;
     }
 
     @Override
     public int getItemCount() {
         return fragments.length;
-    }
-
-    private PlayerPresenter mPresenter;
-    public void setPresenter(@NonNull PlayerPresenter presenter) {
-        mPresenter = presenter;
     }
 
     public MusicContract.Fragment getPlayerFragment() {

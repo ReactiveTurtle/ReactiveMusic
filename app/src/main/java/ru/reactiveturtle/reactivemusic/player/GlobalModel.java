@@ -9,7 +9,10 @@ import androidx.collection.ArrayMap;
 
 import java.util.Objects;
 
+import ru.reactiveturtle.reactivemusic.player.mvp.PlayerPresenter;
+
 public class GlobalModel {
+    public static PlayerPresenter PLAYER_PRESENTER = null;
     private static boolean IS_SERVICE_RUNNING = false;
 
     public static void setServiceRunning(boolean isServiceRunning) {
@@ -23,7 +26,7 @@ public class GlobalModel {
     private static final Handler handler = new Handler(Looper.getMainLooper());
     private static ActivityState ACTIVITY_STATE = ActivityState.STOPPED;
 
-    public static void setActivityActive(ActivityState activityState, int... exceptionIds) {
+    public static void setActivityState(ActivityState activityState, int... exceptionIds) {
         ACTIVITY_STATE = activityState;
         for (int i = 0; i < LISTENERS.size(); i++) {
             if (isNotException(LISTENERS.keyAt(i), exceptionIds)) {

@@ -6,6 +6,14 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
@@ -89,11 +97,11 @@ public abstract class Loaders {
                     MediaMetadataRetriever mmr = new MediaMetadataRetriever();
                     mmr.setDataSource(trackPath);
                     byte[] data = mmr.getEmbeddedPicture();
+                    mmr.release();
                     if (data != null) {
                         Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-                        return new BitmapDrawable(Resources.getSystem(), bitmap);
+                        return new BitmapDrawable(Resources.getSystem(), Helper.rectBitmap(bitmap));
                     }
-                    mmr.release();
                 } catch (Exception ignored) {
                 }
             }
@@ -144,10 +152,21 @@ public abstract class Loaders {
             int titleColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);
 
             String path = cursor.getString(pathColumnIndex);
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+            mmr.setDataSource(path);
+            int trackDuration = 0;
+            try {
+                trackDuration = Integer.parseInt(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+                mmr.release();
+            } catch (NumberFormatException ignored) {
+
+            }
+            mmr.release();
             return new MusicInfo(path,
                     cursor.getString(albumColumnIndex),
                     cursor.getString(artistColumnIndex),
-                    cursor.getString(titleColumnIndex));
+                    cursor.getString(titleColumnIndex),
+                    trackDuration);
         }
 
         @Nullable
@@ -158,14 +177,32 @@ public abstract class Loaders {
                 String mimeType = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE);
                 if (mimeType != null && mimeType.startsWith("audio")) {
                     String albumName = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM);
+                    if (albumName == null) {
+                        albumName = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE);
+                    }
                     String artistName = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
                     if (artistName == null) {
                         artistName = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR);
                     }
                     String trackName = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
-                    mmr.release();
+                    if (trackName == null) {
+                        File file = new File(filePath);
+                        int lastIndex = file.getName().lastIndexOf('.');
+                        if (lastIndex == -1) {
+                            lastIndex = file.getName().length();
+                        }
+                        trackName = file.getName().substring(0, lastIndex);
+                    }
+                    int trackDuration = 0;
+                    try {
+                        trackDuration = Integer.parseInt(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+                        mmr.release();
+                    } catch (NumberFormatException ignored) {
+
+                    }
                     return new MusicInfo(filePath,
-                            albumName, artistName, trackName);
+                            albumName, artistName, trackName,
+                            trackDuration);
                 }
             } catch (Exception ignored) {
             }

@@ -100,6 +100,8 @@ public interface PlayerContract {
 
         void showToast(@StringRes int string);
 
+        void updateWindowBackground();
+
         void updateTheme();
 
         void updateThemeContext();
@@ -107,6 +109,8 @@ public interface PlayerContract {
 
     interface Presenter extends ReceiverPresenter {
         void onView(View view);
+
+        void clearAllLinks();
 
         void onStop();
 

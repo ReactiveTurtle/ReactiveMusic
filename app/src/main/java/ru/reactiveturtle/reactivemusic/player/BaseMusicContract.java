@@ -72,7 +72,6 @@ public interface BaseMusicContract {
     }
 
     interface Fragment extends View {
-        void setPresenter(@NonNull FragmentPresenter presenter);
     }
 
     interface FragmentPresenter extends BasePresenter {

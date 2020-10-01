@@ -35,8 +35,6 @@ public class PlayerPresenter implements PlayerContract.Presenter,
         mRepository = repository;
 
         GlobalModel.registerListener(GLOBAL_MODEL_LISTENER, new GlobalModel.OnModelUpdateListener() {
-            Handler handler = new Handler(Looper.getMainLooper());
-
             @Override
             public void onTrackChanged(MusicInfo currentTrack) {
                 onShowCurrentTrackInfo(currentTrack);
@@ -171,6 +169,15 @@ public class PlayerPresenter implements PlayerContract.Presenter,
                 }
             }, 1000);
         }
+    }
+
+    @Override
+    public void clearAllLinks() {
+        mView = null;
+        mMusicFragment = null;
+        mPlaylistFragment = null;
+        mMusicListFragment = null;
+        mSettingsFragment = null;
     }
 
     @Override
@@ -386,6 +393,7 @@ public class PlayerPresenter implements PlayerContract.Presenter,
             mMusicFragment.repeatTrack(GlobalModel.isRepeatTrack());
             mMusicFragment.playRandomTrack(GlobalModel.isPlayRandomTrack());
         }
+        mView.updateWindowBackground();
     }
 
     private SettingsContract.Fragment mSettingsFragment;

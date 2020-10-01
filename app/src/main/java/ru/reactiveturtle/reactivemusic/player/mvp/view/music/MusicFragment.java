@@ -2,12 +2,9 @@ package ru.reactiveturtle.reactivemusic.player.mvp.view.music;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -36,9 +33,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import butterknife.Unbinder;
-import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
-import ru.reactiveturtle.reactivemusic.player.BaseMusicContract;
 import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ColorSet;
@@ -56,6 +51,12 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
         return fragment;
     }
 
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mPresenter = GlobalModel.PLAYER_PRESENTER;
+    }
+
     @BindView(R.id.playerSeekBar)
     protected SeekBar mSeekBar;
 
@@ -64,10 +65,8 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
     @BindView(R.id.playerTrackDuration)
     protected TextView mTrackDuration;
 
-    @BindView(R.id.playerTrackArtist)
-    protected TextView mPlayerTrackArtist;
-    @BindView(R.id.playerTrackAlbum)
-    protected TextView mPlayerTrackAlbum;
+    @BindView(R.id.playerTrackArtistAlbum)
+    protected TextView mPlayerTrackArtistAlbum;
 
     @BindView(R.id.playerAlbumImage)
     protected View mPlayerAlbumImage;
@@ -132,8 +131,7 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
         mPresenter.onMusicFragmentAvailable(this);
 
         int color = Theme.IS_DARK ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY_LIGHT;
-        mPlayerTrackAlbum.setBackgroundColor(color);
-        mPlayerTrackArtist.setBackgroundColor(color);
+        mPlayerTrackArtistAlbum.setBackgroundColor(color);
         mPlayerAlbumImage.setBackgroundColor(color);
         mPlayerTrackName.setBackgroundColor(color);
         mTrackProgress.setBackgroundColor(color);
@@ -159,11 +157,6 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
     }
 
     private MusicContract.Presenter mPresenter;
-
-    @Override
-    public void setPresenter(@NonNull BaseMusicContract.FragmentPresenter presenter) {
-        mPresenter = (MusicContract.Presenter) presenter;
-    }
 
     private boolean mIsProgressLocked = false;
     private boolean mIsProgressReadyToUnlock = false;
@@ -191,15 +184,18 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
 
     @Override
     public void showCurrentTrack(MusicInfo musicInfo) {
-        mPlayerTrackAlbum.setBackgroundColor(Color.TRANSPARENT);
-        mPlayerTrackArtist.setBackgroundColor(Color.TRANSPARENT);
+        mPlayerTrackArtistAlbum.setBackgroundColor(Color.TRANSPARENT);
         mPlayerTrackName.setBackgroundColor(Color.TRANSPARENT);
         mTrackProgress.setBackgroundColor(Color.TRANSPARENT);
         mTrackDuration.setBackgroundColor(Color.TRANSPARENT);
 
-        mPlayerTrackAlbum.setText(musicInfo.getAlbum());
-        mPlayerTrackArtist.setText(musicInfo.getArtist());
-        mPlayerAlbumImage.setBackground(Theme.getDefaultAlbumCoverCopy());
+        mPlayerTrackArtistAlbum.setText(musicInfo.getAlbum() + "\n" + musicInfo.getArtist());
+        if (Theme.getDefaultAlbumCover().getBitmap()
+                .equals(musicInfo.getAlbumImage().getBitmap())) {
+            mPlayerAlbumImage.setBackground(Theme.getDefaultAlbumCoverCopy());
+        } else {
+            mPlayerAlbumImage.setBackground(musicInfo.getAlbumImage());
+        }
         mPlayerTrackName.setText(musicInfo.getTitle());
 
         mSeekBar.setMax(musicInfo.getDuration());
@@ -228,23 +224,26 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
                 R.drawable.ic_random, R.drawable.ic_random, VectorDrawableCompat.class));
         mRepeatTrack.setBackground(Theme.getCheckDrawable(
                 R.drawable.ic_repeat_all, R.drawable.ic_repeat_one, VectorDrawableCompat.class));
-        mPlayerAlbumImage.setBackground(Theme.getDefaultAlbumCoverCopy());
+        if (mPlayerAlbumImage.getBackground() instanceof BitmapDrawable &&
+                Theme.getDefaultAlbumCover().getBitmap()
+                        .equals(((BitmapDrawable) mPlayerAlbumImage.getBackground()).getBitmap())) {
+            mPlayerAlbumImage.setBackground(Theme.getDefaultAlbumCoverCopy());
+        }
     }
 
     @Override
     public void updateThemeContext() {
-        if (mPlayerTrackArtist.getText().toString().equals("")) {
+        if (mPlayerTrackArtistAlbum.getText().toString().equals("")) {
             int color = Theme.IS_DARK ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY_LIGHT;
-            mPlayerTrackAlbum.setBackgroundColor(color);
-            mPlayerTrackArtist.setBackgroundColor(color);
+            mPlayerTrackArtistAlbum.setBackgroundColor(color);
+            mPlayerTrackArtistAlbum.setBackgroundColor(color);
             mPlayerAlbumImage.setBackgroundColor(color);
             mPlayerTrackName.setBackgroundColor(color);
             mTrackProgress.setBackgroundColor(color);
             mTrackDuration.setBackgroundColor(color);
         }
 
-        mPlayerTrackAlbum.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
-        mPlayerTrackArtist.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
+        mPlayerTrackArtistAlbum.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
         mPlayerTrackName.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
 
         Theme.updateSeekBar(mSeekBar);
@@ -343,7 +342,7 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
         GlobalModel.setPlayRandomTrack(!GlobalModel.isPlayRandomTrack());
     }
 
-    private String getTime(int millis) {
+    public static String getTime(int millis) {
         @SuppressLint("DefaultLocale") String result = String.format("%s:%02d:%02d:%02d",
                 TimeUnit.MILLISECONDS.toDays(millis),
                 TimeUnit.MILLISECONDS.toHours(millis) - TimeUnit.DAYS.toHours(TimeUnit.MILLISECONDS.toDays(millis)),
@@ -358,11 +357,11 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
     }
 
     @NonNull
-    private String removeFirstUnit(@NonNull String result) {
+    private static String removeFirstUnit(@NonNull String result) {
         return result.split(":", 2)[1];
     }
 
-    private boolean isTimeUnitZero(@NonNull String timeUnit) {
+    private static boolean isTimeUnitZero(@NonNull String timeUnit) {
         boolean isZero = true;
         for (int i = 0; i < timeUnit.length() && isZero; i++) {
             isZero = timeUnit.charAt(i) == '0';

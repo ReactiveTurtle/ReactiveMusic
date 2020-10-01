@@ -1,7 +1,6 @@
 package ru.reactiveturtle.reactivemusic.player.mvp.view;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
@@ -9,15 +8,16 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager2.widget.ViewPager2;
 
 import android.Manifest;
-import android.animation.AnimatorSet;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -28,11 +28,9 @@ import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.util.DisplayMetrics;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.WindowManager;
+import android.view.Window;
 import android.view.animation.Animation;
 import android.view.animation.AnimationSet;
-import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
 import android.widget.Toast;
 
@@ -78,6 +76,17 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //enableScreenMode();
+    }
+
+    private void enableScreenMode() {
+        int height = getResources().getDisplayMetrics().heightPixels;
+        Rect rectangle = new Rect();
+        Window window = getWindow();
+        window.getDecorView().getWindowVisibleDisplayFrame(rectangle);
+        int statusBarHeight = rectangle.top;
+        getWindow().getAttributes().height = 1920 - statusBarHeight;
+        getWindow().getAttributes().y = getWindow().getAttributes().height - height;
     }
 
     private void init() {
@@ -112,16 +121,15 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
                         .setTextSelected(true);
 
         setSupportActionBar(mToolbar);
-        mToolbar.setNavigationOnClickListener(view -> {
-            mPresenter.onBackPressed();
-        });
+        mToolbar.setNavigationOnClickListener(view -> mPresenter.onBackPressed());
 
-        PlayerPresenter playerPresenter = new PlayerPresenter(playerRepository);
+        PlayerPresenter playerPresenter = GlobalModel.PLAYER_PRESENTER == null ?
+                new PlayerPresenter(playerRepository) : GlobalModel.PLAYER_PRESENTER;
         mPresenter = playerPresenter;
+        GlobalModel.PLAYER_PRESENTER = playerPresenter;
         playerPresenter.onView(this);
         initPlayerViewPager();
         initSelectMusicView();
-        mPlayerPagerAdapter.setPresenter(playerPresenter);
     }
 
     private void initSelectMusicView() {
@@ -142,7 +150,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
             if (!GlobalModel.isServiceRunning()) {
                 startService(new Intent(this, MusicService.class));
             }
-            GlobalModel.setActivityActive(GlobalModel.ActivityState.RESUMED);
+            GlobalModel.setActivityState(GlobalModel.ActivityState.RESUMED);
             mSelectMusicView.onResume();
         } else {
             Permissions.requestExternalStorage(this);
@@ -153,14 +161,14 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
     protected void onPause() {
         super.onPause();
         if (Permissions.hasExternalStorage(this)) {
-            GlobalModel.setActivityActive(GlobalModel.ActivityState.PAUSED);
+            GlobalModel.setActivityState(GlobalModel.ActivityState.PAUSED);
             mSelectMusicView.onPause();
         }
     }
 
     @Override
     protected void onDestroy() {
-        GlobalModel.setActivityActive(GlobalModel.ActivityState.STOPPED);
+        GlobalModel.setActivityState(GlobalModel.ActivityState.STOPPED);
         if (mPresenter != null) {
             mPresenter.onStop();
         }
@@ -244,6 +252,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
 
     @Override
     public void showDrawer() {
+        updateWindowBackground();
         DisplayMetrics dm = getResources().getDisplayMetrics();
         TranslateAnimation translateAnimation = new TranslateAnimation(
                 dm.widthPixels, 0f, 0f, 0f);
@@ -256,14 +265,11 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
             @Override
             public void onAnimationStart(Animation animation) {
                 mDrawerLayout.setVisibility(View.VISIBLE);
-                mDrawerLayout.setBackgroundColor(Theme.IS_DARK ?
-                        Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY);
             }
 
             @Override
             public void onAnimationEnd(Animation animation) {
                 updateThemeContext();
-                mDrawerLayout.setBackground(null);
             }
 
             @Override
@@ -415,7 +421,51 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
     }
 
     @Override
+    public void updateWindowBackground() {
+        if (!GlobalModel.isFirstTrackLoad() && GlobalModel.getCurrentTrack() != null) {
+            Bitmap bitmap;
+            Canvas canvas;
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            if (GlobalModel.getCurrentTrack().getAlbumImage().getBitmap().equals(
+                    Theme.getDefaultAlbumCover().getBitmap())) {
+                bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+                canvas = new Canvas(bitmap);
+                paint.setShader(new LinearGradient(0, 0, 0, 512,
+                        new int[]{
+                                Theme.getColorSet().getPrimaryDark(),
+                                Theme.IS_DARK ?
+                                        Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY
+                        },
+                        new float[]{
+                                0, 1
+                        }, Shader.TileMode.CLAMP));
+                canvas.drawRect(0, 0, bitmap.getWidth(), bitmap.getHeight(), paint);
+                paint.setShader(null);
+            } else {
+                bitmap = GlobalModel.getCurrentTrack().getAlbumImage().getBitmap()
+                        .copy(Bitmap.Config.ARGB_8888, true);
+            }
+            DisplayMetrics dm = getResources().getDisplayMetrics();
+            float aspectRatio = dm.widthPixels / (float) dm.heightPixels;
+            Bitmap back = Bitmap.createBitmap((int) (bitmap.getHeight() * aspectRatio),
+                    bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+            canvas = new Canvas(back);
+            canvas.drawBitmap(bitmap, (back.getWidth() - bitmap.getWidth()) / 2f, 0, paint);
+            int color = Theme.setAlpha("6a", Theme.IS_DARK ?
+                    Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY);
+            paint.setColor(color);
+            canvas.drawRect(0, 0, back.getWidth(), back.getHeight(), paint);
+            mDrawerLayout.setBackground(new BitmapDrawable(getResources(),
+                    Helper.fastblur(back, 1, 32)));
+        } else {
+            mDrawerLayout.setBackground(new ColorDrawable(Theme.IS_DARK ?
+                    Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY));
+        }
+    }
+
+    @Override
     public void updateTheme() {
+        updateWindowBackground();
         mToolbar.setBackgroundColor(Theme.getColorSet().getPrimary());
         if (Theme.isVeryBright(Theme.getColorSet().getPrimary())) {
             mToolbar.setTitleTextColor(Color.BLACK);
@@ -431,10 +481,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
 
     @Override
     public void updateThemeContext() {
-        if (!GlobalModel.isFirstTrackLoad()) {
-            getWindow().setBackgroundDrawable(new ColorDrawable(Theme.IS_DARK ?
-                    Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY));
-        }
+        updateWindowBackground();
         mBottomNavigationView.setBackgroundColor(Theme.IS_DARK ?
                 Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY);
         updateBottomNavigationView();

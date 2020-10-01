@@ -24,6 +24,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import ru.reactiveturtle.reactivemusic.R;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.music.MusicFragment;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
@@ -167,8 +168,12 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
                 title.setText(track.getPath());
             } else {
                 albumImage.setBackground(track.getAlbumImage());
-                title.setText(track.getTitle());
-                String infoText = track.getArtist() + " | " + track.getAlbum();
+                String titleString = track.getTitle();
+                if (!track.getArtist().equals(MusicInfo.UNKNOWN_ARTIST)) {
+                    titleString += " - " + track.getArtist();
+                }
+                title.setText(titleString);
+                String infoText = track.getAlbum() + " • " + MusicFragment.getTime(track.getDuration());
                 info.setText(infoText);
 
                 title.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
