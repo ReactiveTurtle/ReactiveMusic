@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,13 +27,10 @@ import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectMusicListA
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
-import ru.reactiveturtle.tools.AsyncTaskQueue;
 import ru.reactiveturtle.tools.BaseAsyncTask;
 
 public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.MusicViewHolder> {
     protected List<MusicInfo> mMusicList = new ArrayList<>();
-
-    protected AsyncTaskQueue mAsyncTaskQueue = new AsyncTaskQueue();
 
     private LinearLayoutManager mLinearLayoutManager;
 
@@ -48,20 +46,8 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
     }
 
     @Override
-    public void onViewRecycled(@NonNull MusicViewHolder holder) {
-        super.onViewRecycled(holder);
-        int position;
-        if ((position = holder.getLayoutPosition()) > -1) {
-            //mAsyncTaskQueue.cancelLoad("c" + position);
-            //mAsyncTaskQueue.cancelLoad("m" + position);
-        }
-        System.out.println("OnViewRecycled " + position);
-    }
-
-    @Override
     public void onBindViewHolder(@NonNull MusicViewHolder holder, int position) {
         MusicInfo track = mMusicList.get(position);
-        System.out.println("Show info: " +  position + " " + track);
         if (track.getAlbumImage() == null) {
             holder.showGray();
             holder.loadAlbumCover(track, position);
@@ -73,28 +59,23 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
             holder.showInfo(track);
         } else {
             holder.showGray();
-            String loaderKey = "m" + position;
-            if (!mAsyncTaskQueue.containsId(loaderKey)) {
-                Loaders.MusicInfoLoader musicInfoLoader = new Loaders.MusicInfoLoader(
-                        holder.itemView.getContext(), track.getPath());
-                musicInfoLoader.setFinishCallback(musicInfo -> {
-                    if (musicInfo == null) {
-                        track.setDuration(-1);
-                    } else {
-                        track.setAlbum(musicInfo.getAlbum());
-                        track.setArtist(musicInfo.getArtist());
-                        track.setTitle(musicInfo.getTitle());
-                        track.setDuration(musicInfo.getDuration());
+            Loaders.MusicInfoLoader musicInfoLoader = new Loaders.MusicInfoLoader(
+                    holder.itemView.getContext(), track.getPath());
+            musicInfoLoader.setFinishCallback(musicInfo -> {
+                if (musicInfo == null) {
+                    track.setDuration(-1);
+                } else {
+                    track.setAlbum(musicInfo.getAlbum());
+                    track.setArtist(musicInfo.getArtist());
+                    track.setTitle(musicInfo.getTitle());
+                    track.setDuration(musicInfo.getDuration());
+                    if (track.getAlbumImage() != null) {
                         notifyItemChanged(position);
                     }
-                });
-                addLoader(loaderKey, musicInfoLoader);
-            }
+                }
+            });
+            musicInfoLoader.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
-    }
-
-    public void addLoader(String key, BaseAsyncTask<?> loader) {
-        mAsyncTaskQueue.addLoader(key, loader, true);
     }
 
     @Override
@@ -169,7 +150,6 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
 
     public void bind(SelectMusicListAdapter adapter) {
         adapter.mMusicList = mMusicList;
-        adapter.mAsyncTaskQueue = mAsyncTaskQueue;
     }
 
     protected class MusicViewHolder extends RecyclerView.ViewHolder {
@@ -239,19 +219,18 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
         }
 
         public void loadAlbumCover(MusicInfo track, int position) {
-            String loaderKey = "c" + position;
-            if (!mAsyncTaskQueue.containsId(loaderKey)) {
-                Loaders.AlbumCoverLoader albumCoverLoader =
-                        new Loaders.AlbumCoverLoader(itemView.getContext(), track.getPath(),
-                                Theme.getDefaultAlbumCover());
-                albumCoverLoader.setFinishCallback(bitmapDrawable -> {
-                    if (bitmapDrawable != null) {
-                        track.setAlbumImage(bitmapDrawable);
+            Loaders.AlbumCoverLoader albumCoverLoader =
+                    new Loaders.AlbumCoverLoader(itemView.getContext(), track.getPath(),
+                            Theme.getDefaultAlbumCover());
+            albumCoverLoader.setFinishCallback(bitmapDrawable -> {
+                if (bitmapDrawable != null) {
+                    track.setAlbumImage(bitmapDrawable);
+                    if (track.getDuration() > -1) {
                         notifyItemChanged(position);
                     }
-                });
-                addLoader(loaderKey, albumCoverLoader);
-            }
+                }
+            });
+            albumCoverLoader.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
     }
 

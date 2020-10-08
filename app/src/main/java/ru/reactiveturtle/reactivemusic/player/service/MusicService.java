@@ -7,6 +7,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.AudioManager;
@@ -18,6 +19,7 @@ import android.widget.RemoteViews;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -193,7 +195,7 @@ public class MusicService extends Service implements IMusicService.View {
         remoteViews.setTextViewText(R.id.playerNotificationTitle, currentMusic.getTitle());
         remoteViews.setTextViewText(R.id.playerNotificationInfo,
                 currentMusic.getArtist() + " | " + currentMusic.getAlbum());
-        remoteViews.setInt(R.id.playerNotificationPlayPause, "setBackgroundResource",
+        remoteViews.setInt(R.id.playerNotificationPlayPause, "setBackground",
                 mMusicPlayer.isPlaying() ? R.drawable.pause_button :
                         R.drawable.play_button);
 

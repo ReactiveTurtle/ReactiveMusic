@@ -46,9 +46,6 @@ public class BaseAsyncTask<Result> extends AsyncTask<Void, Void, Result> {
             finishCallback.onFinish(result);
         }
         context = null;
-        if (endCallback != null) {
-            endCallback.onEnd();
-        }
     }
 
     @Override
@@ -56,9 +53,6 @@ public class BaseAsyncTask<Result> extends AsyncTask<Void, Void, Result> {
         super.onCancelled(result);
         if (finishCallback != null) {
             finishCallback.onFinish(result);
-        }
-        if (endCallback != null) {
-            endCallback.onEnd();
         }
     }
 
@@ -70,15 +64,5 @@ public class BaseAsyncTask<Result> extends AsyncTask<Void, Void, Result> {
 
     public interface FinishCallback<Result> {
         void onFinish(Result result);
-    }
-
-    private EndCallback endCallback;
-
-    void setEndCallback(EndCallback endCallback) {
-        this.endCallback = endCallback;
-    }
-
-    interface EndCallback {
-        void onEnd();
     }
 }

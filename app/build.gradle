@@ -8,8 +8,8 @@ android {
         applicationId "ru.reactiveturtle.reactivemusic"
         minSdkVersion 16
         targetSdkVersion 29
-        versionCode 14
-        versionName "1.4.4"
+        versionCode 15
+        versionName "1.4.5"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
