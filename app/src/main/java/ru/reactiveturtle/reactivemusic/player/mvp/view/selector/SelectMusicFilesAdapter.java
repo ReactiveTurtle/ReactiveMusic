@@ -24,8 +24,11 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
+import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.Loaders;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
+import ru.reactiveturtle.tools.BaseAsyncTask;
 
 public class SelectMusicFilesAdapter extends RecyclerView.Adapter<SelectMusicFilesAdapter.SelectFreeFilesHolder> {
     private List<File> mFiles = new ArrayList<>();
@@ -45,7 +48,7 @@ public class SelectMusicFilesAdapter extends RecyclerView.Adapter<SelectMusicFil
     public void onBindViewHolder(@NonNull SelectFreeFilesHolder holder, int position) {
         if (mFiles.get(position).isDirectory()) {
             holder.type.setBackgroundResource(R.drawable.ic_folder_open);
-            Theme.changeColor(holder.type.getBackground(), Theme.CONTEXT_NEGATIVE_PRIMARY);
+            ThemeHelper.changeColor(holder.type.getBackground(), Theme.CONTEXT_NEGATIVE_PRIMARY);
         } else {
             if (mIconFiles.get(position) != null) {
                 holder.type.setBackground(mIconFiles.get(position));
@@ -54,26 +57,34 @@ public class SelectMusicFilesAdapter extends RecyclerView.Adapter<SelectMusicFil
                 holder.type.setBackground(DEFAULT_GRAY);
                 Loaders.MusicInfoLoader musicInfoLoader =
                         new Loaders.MusicInfoLoader(holder.itemView.getContext(), mFiles.get(position).getAbsolutePath());
-                musicInfoLoader.registerListener(0, (loader, musicInfo) -> {
-                    if (musicInfo != null) {
-                        Objects.requireNonNull(musicInfo);
-                        mFilesReplace.set(position, musicInfo.getArtist() + " - " + musicInfo.getTitle());
-                        holder.name.setText(mFilesReplace.get(position));
-                        Loaders.AlbumCoverLoader albumCoverLoader = new Loaders.AlbumCoverLoader(
-                                loader.getContext(), musicInfo.getPath(), Theme.getDefaultAlbumCover());
-                        albumCoverLoader.registerListener(0, (loader1, data) -> {
-                            mIconFiles.set(position, data);
-                            holder.type.setBackground(data);
-                        });
-                        albumCoverLoader.forceLoad();
-                    } else {
-                        mIconFiles.set(position, ResourcesCompat.getDrawable(holder.itemView.getResources(),
-                                R.drawable.ic_unknown_file, holder.itemView.getContext().getTheme()));
-                        holder.type.setBackground(mIconFiles.get(position));
-                        Theme.changeColor(holder.type.getBackground(), Theme.CONTEXT_NEGATIVE_PRIMARY);
+                musicInfoLoader.setFinishCallback(new BaseAsyncTask.FinishCallback<MusicInfo>() {
+                    @Override
+                    public void onFinish(MusicInfo musicInfo) {
+                        if (musicInfo != null) {
+                            Objects.requireNonNull(musicInfo);
+                            mFilesReplace.set(position, musicInfo.getArtist() + " - " + musicInfo.getTitle());
+                            holder.name.setText(mFilesReplace.get(position));
+                            Loaders.AlbumCoverLoader albumCoverLoader = new Loaders.AlbumCoverLoader(
+                                    musicInfoLoader.getContext(), musicInfo.getPath(), Theme.getDefaultAlbumCover());
+                            albumCoverLoader.setFinishCallback(new BaseAsyncTask.FinishCallback<BitmapDrawable>() {
+                                @Override
+                                public void onFinish(BitmapDrawable bitmapDrawable) {
+                                    mIconFiles.set(position, bitmapDrawable);
+                                    holder.type.setBackground(bitmapDrawable);
+                                }
+
+                            });
+                            albumCoverLoader.execute();
+                        } else {
+                            mIconFiles.set(position, ResourcesCompat.getDrawable(holder.itemView.getResources(),
+                                    R.drawable.ic_unknown_file, holder.itemView.getContext().getTheme()));
+                            holder.type.setBackground(mIconFiles.get(position));
+                            ThemeHelper.changeColor(holder.type.getBackground(), Theme.CONTEXT_NEGATIVE_PRIMARY);
+                        }
                     }
+
                 });
-                musicInfoLoader.forceLoad();
+                musicInfoLoader.execute();
             }
         }
 
@@ -94,7 +105,7 @@ public class SelectMusicFilesAdapter extends RecyclerView.Adapter<SelectMusicFil
             boolean isChecked = mSelectedFiles.contains(fileName);
             holder.check.setChecked(isChecked);
         }
-        holder.check.setBackground(Theme.getCheckDrawable(
+        holder.check.setBackground(ThemeHelper.getCheckDrawable(
                 R.drawable.ic_check, R.drawable.ic_check, BitmapDrawable.class));
         holder.bottomDivider.setBackgroundColor(Theme.CONTEXT_LIGHT);
     }

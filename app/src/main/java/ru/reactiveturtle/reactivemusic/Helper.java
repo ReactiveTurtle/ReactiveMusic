@@ -133,6 +133,7 @@ public class Helper {
     }
 
     public static Bitmap rectBitmap(Bitmap src) {
+        DisplayMetrics dm = Resources.getSystem().getDisplayMetrics();
         int size = Math.max(src.getWidth(), src.getHeight());
         Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);

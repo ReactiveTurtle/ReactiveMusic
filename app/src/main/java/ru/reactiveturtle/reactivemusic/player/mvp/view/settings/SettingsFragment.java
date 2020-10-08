@@ -4,7 +4,6 @@ import android.graphics.Color;
 import android.graphics.LightingColorFilter;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
-import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,7 +14,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -34,9 +32,7 @@ import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ColorPalette;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
-import ru.reactiveturtle.reactivemusic.player.BaseMusicContract;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemesAdapter;
-import ru.reactiveturtle.reactivemusic.player.service.MusicModel;
 
 public class SettingsFragment extends androidx.fragment.app.Fragment implements SettingsContract.Fragment {
     private Unbinder unbinder;
@@ -85,7 +81,9 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
             Theme.update(colorSet, GlobalModel.getTrackProgress());
             mPresenter.onUpdateTheme();
         });
-        mPresenter.onSettingsFragmentAvailable(this);
+        if (mPresenter != null) {
+            mPresenter.onSettingsFragmentAvailable(this);
+        }
         mThemeBrightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {

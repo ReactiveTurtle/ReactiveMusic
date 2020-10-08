@@ -1,4 +1,4 @@
-package ru.reactiveturtle.tools.text;
+package ru.reactiveturtle.tools.widget.text;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -23,6 +23,7 @@ import androidx.appcompat.widget.AppCompatEditText;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import ru.reactiveturtle.tools.R;
+import ru.reactiveturtle.tools.widget.warning.MessageDialog;
 
 public class TextDialog extends BottomSheetDialogFragment {
     private AppCompatEditText editText;
@@ -118,7 +119,7 @@ public class TextDialog extends BottomSheetDialogFragment {
         }
     }
 
-    public static class Builder implements ITextDialog {
+    public static class Builder extends MessageDialog.Builder implements ITextDialog {
         private Drawable background;
 
         @Override

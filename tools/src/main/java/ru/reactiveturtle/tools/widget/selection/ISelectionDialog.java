@@ -1,4 +1,4 @@
-package ru.reactiveturtle.tools.selection;
+package ru.reactiveturtle.tools.widget.selection;
 
 import android.graphics.drawable.Drawable;
 import android.text.Spannable;

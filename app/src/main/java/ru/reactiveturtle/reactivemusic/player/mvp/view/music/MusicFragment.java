@@ -1,6 +1,7 @@
 package ru.reactiveturtle.reactivemusic.player.mvp.view.music;
 
 import android.annotation.SuppressLint;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -13,6 +14,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.SeekBar;
@@ -33,11 +35,13 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import butterknife.Unbinder;
+import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ColorSet;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 
 public class MusicFragment extends Fragment implements MusicContract.Fragment {
     private Unbinder unbinder;
@@ -65,8 +69,10 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
     @BindView(R.id.playerTrackDuration)
     protected TextView mTrackDuration;
 
-    @BindView(R.id.playerTrackArtistAlbum)
-    protected TextView mPlayerTrackArtistAlbum;
+    @BindView(R.id.playerTrackAlbum)
+    protected TextView mPlayerTrackAlbum;
+    @BindView(R.id.playerTrackArtist)
+    protected TextView mPlayerTrackArtist;
 
     @BindView(R.id.playerAlbumImage)
     protected View mPlayerAlbumImage;
@@ -128,18 +134,25 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
             Objects.requireNonNull(mPresenter);
             mPresenter.onRepeatTrack();
         });
-        mPresenter.onMusicFragmentAvailable(this);
 
-        int color = Theme.IS_DARK ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY_LIGHT;
-        mPlayerTrackArtistAlbum.setBackgroundColor(color);
-        mPlayerAlbumImage.setBackgroundColor(color);
-        mPlayerTrackName.setBackgroundColor(color);
-        mTrackProgress.setBackgroundColor(color);
-        mTrackDuration.setBackgroundColor(color);
-
-        int albumImageSize = (int) (getResources().getDisplayMetrics().widthPixels * 0.5f);
-        mPlayerAlbumImage.getLayoutParams().width = albumImageSize;
-        mPlayerAlbumImage.getLayoutParams().height = albumImageSize;
+        showEmptyContent();
+        if (mPresenter != null) {
+            mPresenter.onMusicFragmentAvailable(this);
+        }
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+            int albumImageSize = (int) (getResources().getDisplayMetrics().widthPixels * 0.5f);
+            mPlayerAlbumImage.getLayoutParams().width = albumImageSize;
+            mPlayerAlbumImage.getLayoutParams().height = albumImageSize;
+        } else {
+            ViewTreeObserver vto = mPlayerAlbumImage.getViewTreeObserver();
+            vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    mPlayerAlbumImage.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    mPlayerAlbumImage.getLayoutParams().width = mPlayerAlbumImage.getMeasuredHeight();
+                }
+            });
+        }
         return view;
     }
 
@@ -184,18 +197,14 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
 
     @Override
     public void showCurrentTrack(MusicInfo musicInfo) {
-        mPlayerTrackArtistAlbum.setBackgroundColor(Color.TRANSPARENT);
+        mPlayerTrackAlbum.setBackgroundColor(Color.TRANSPARENT);
+        mPlayerTrackArtist.setBackgroundColor(Color.TRANSPARENT);
         mPlayerTrackName.setBackgroundColor(Color.TRANSPARENT);
         mTrackProgress.setBackgroundColor(Color.TRANSPARENT);
         mTrackDuration.setBackgroundColor(Color.TRANSPARENT);
 
-        mPlayerTrackArtistAlbum.setText(musicInfo.getAlbum() + "\n" + musicInfo.getArtist());
-        if (Theme.getDefaultAlbumCover().getBitmap()
-                .equals(musicInfo.getAlbumImage().getBitmap())) {
-            mPlayerAlbumImage.setBackground(Theme.getDefaultAlbumCoverCopy());
-        } else {
-            mPlayerAlbumImage.setBackground(musicInfo.getAlbumImage());
-        }
+        mPlayerTrackAlbum.setText(musicInfo.getAlbum());
+        mPlayerTrackArtist.setText(musicInfo.getArtist());
         mPlayerTrackName.setText(musicInfo.getTitle());
 
         mSeekBar.setMax(musicInfo.getDuration());
@@ -209,41 +218,41 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
 
     @Override
     public void startMusic() {
-        mPlayPause.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_pause));
+        mPlayPause.setBackground(ThemeHelper.getDefaultRoundButtonDrawable(R.drawable.ic_pause));
     }
 
     @Override
     public void pauseMusic() {
-        mPlayPause.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_play));
+        mPlayPause.setBackground(ThemeHelper.getDefaultRoundButtonDrawable(R.drawable.ic_play));
     }
 
     @Override
     public void updateTheme() {
         Theme.updateSeekBar(mSeekBar);
-        mRandomTrack.setBackground(Theme.getCheckDrawable(
+        mRandomTrack.setBackground(ThemeHelper.getCheckDrawable(
                 R.drawable.ic_random, R.drawable.ic_random, VectorDrawableCompat.class));
-        mRepeatTrack.setBackground(Theme.getCheckDrawable(
+        mRepeatTrack.setBackground(ThemeHelper.getCheckDrawable(
                 R.drawable.ic_repeat_all, R.drawable.ic_repeat_one, VectorDrawableCompat.class));
         if (mPlayerAlbumImage.getBackground() instanceof BitmapDrawable &&
                 Theme.getDefaultAlbumCover().getBitmap()
                         .equals(((BitmapDrawable) mPlayerAlbumImage.getBackground()).getBitmap())) {
             mPlayerAlbumImage.setBackground(Theme.getDefaultAlbumCoverCopy());
         }
+        if (GlobalModel.isTrackPlay()) {
+            startMusic();
+        } else {
+            pauseMusic();
+        }
     }
 
     @Override
     public void updateThemeContext() {
-        if (mPlayerTrackArtistAlbum.getText().toString().equals("")) {
-            int color = Theme.IS_DARK ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY_LIGHT;
-            mPlayerTrackArtistAlbum.setBackgroundColor(color);
-            mPlayerTrackArtistAlbum.setBackgroundColor(color);
-            mPlayerAlbumImage.setBackgroundColor(color);
-            mPlayerTrackName.setBackgroundColor(color);
-            mTrackProgress.setBackgroundColor(color);
-            mTrackDuration.setBackgroundColor(color);
+        if (mPlayerTrackArtist.getText().toString().equals("")) {
+            showEmptyContent();
         }
 
-        mPlayerTrackArtistAlbum.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
+        mPlayerTrackAlbum.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
+        mPlayerTrackArtist.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
         mPlayerTrackName.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
 
         Theme.updateSeekBar(mSeekBar);
@@ -251,17 +260,37 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
         mTrackProgress.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
         mTrackDuration.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
 
-        mRandomTrack.setBackground(Theme.getCheckDrawable(
+        mRandomTrack.setBackground(ThemeHelper.getCheckDrawable(
                 R.drawable.ic_random, R.drawable.ic_random, VectorDrawableCompat.class));
-        mPreviousTrack.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_previous));
-        mNextTrack.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_next));
-        mRepeatTrack.setBackground(Theme.getCheckDrawable(
+        mPreviousTrack.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_previous));
+        mNextTrack.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_next));
+        mRepeatTrack.setBackground(ThemeHelper.getCheckDrawable(
                 R.drawable.ic_repeat_all, R.drawable.ic_repeat_one, VectorDrawableCompat.class));
+    }
+
+    private void showEmptyContent() {
+        int color = Theme.IS_DARK ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY_LIGHT;
+        mPlayerTrackAlbum.setBackgroundColor(color);
+        mPlayerTrackArtist.setBackgroundColor(color);
+        mPlayerAlbumImage.setBackgroundColor(color);
+        mPlayerTrackName.setBackgroundColor(color);
+        mTrackProgress.setBackgroundColor(color);
+        mTrackDuration.setBackgroundColor(color);
     }
 
     @Override
     public void updateTrackProgress(int progress) {
         setProgress(progress);
+    }
+
+    @Override
+    public void updateTrackCover(BitmapDrawable cover) {
+        if (Theme.getDefaultAlbumCover().getBitmap()
+                .equals(cover.getBitmap())) {
+            mPlayerAlbumImage.setBackground(Theme.getDefaultAlbumCoverCopy());
+        } else {
+            mPlayerAlbumImage.setBackground(cover);
+        }
     }
 
     @Override
@@ -289,47 +318,44 @@ public class MusicFragment extends Fragment implements MusicContract.Fragment {
                 @Override
                 public void run() {
                     if (i[0] < colorSets.size()) {
-                        if (GlobalModel.getCurrentTrack() != null) {
-                            Bitmap original = Bitmap.createScaledBitmap(GlobalModel.getCurrentTrack().getAlbumImage().getBitmap(),
-                                    512, 512, true);
-                            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                            Bitmap bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
-                            paint.setColor(colorSets.get(colorSets.size() - i[0] - 1).getPrimary());
+                        Bitmap original = Bitmap.createScaledBitmap(GlobalModel.getCurrentTrack().getAlbumImage().getBitmap(),
+                                512, 512, true);
+                        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                        Bitmap bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+                        paint.setColor(colorSets.get(colorSets.size() - i[0] - 1).getPrimary());
 
-                            int[] colors = new int[colorSets.size()];
-                            for (int j = 0; j < i[0]; j++) {
-                                colors[j] = Color.TRANSPARENT;
-                            }
-
-                            for (int j = i[0]; j < colors.length; j++) {
-                                colors[j] = colorSets.get(j - i[0]).getPrimary();
-                            }
-
-                            float[] positions = new float[]{
-                                    0, 1f / 15, 2f / 15,
-                                    3f / 15, 4f / 15, 5f / 15,
-                                    6f / 15, 7f / 15, 8f / 15,
-                                    9f / 15, 10f / 15, 11f / 15,
-                                    12f / 15, 13f / 15, 14f / 15,
-                                    1f
-                            };
-                            Canvas canvas = new Canvas(bitmap);
-                            canvas.drawBitmap(original, (bitmap.getWidth() - original.getWidth()) / 2f,
-                                    (bitmap.getHeight() - original.getHeight()) / 2f, paint);
-                            paint.setShader(new RadialGradient(256, 256, 256,
-                                    colors,
-                                    positions, Shader.TileMode.CLAMP));
-                            canvas.drawRect(new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight()), paint);
-                            mPlayerAlbumImage.setBackground(new BitmapDrawable(getResources(), bitmap));
+                        int[] colors = new int[colorSets.size()];
+                        for (int j = 0; j < i[0]; j++) {
+                            colors[j] = Color.TRANSPARENT;
                         }
+
+                        for (int j = i[0]; j < colors.length; j++) {
+                            colors[j] = colorSets.get(j - i[0]).getPrimary();
+                        }
+
+                        float[] positions = new float[]{
+                                0, 1f / 15, 2f / 15,
+                                3f / 15, 4f / 15, 5f / 15,
+                                6f / 15, 7f / 15, 8f / 15,
+                                9f / 15, 10f / 15, 11f / 15,
+                                12f / 15, 13f / 15, 14f / 15,
+                                1f
+                        };
+                        Canvas canvas = new Canvas(bitmap);
+                        canvas.drawBitmap(original, (bitmap.getWidth() - original.getWidth()) / 2f,
+                                (bitmap.getHeight() - original.getHeight()) / 2f, paint);
+                        paint.setShader(new RadialGradient(256, 256, 256,
+                                colors,
+                                positions, Shader.TileMode.CLAMP));
+                        canvas.drawRect(new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight()), paint);
+                        Helper.goToMainLooper(() ->
+                                mPlayerAlbumImage.setBackground(new BitmapDrawable(getResources(), bitmap)));
                         i[0]++;
                     } else {
                         Theme.updateDefaultAlbumCover();
-                        if (GlobalModel.getCurrentTrack() != null) {
-                            BitmapDrawable cover = GlobalModel.getCurrentTrack().getAlbumImage();
-                            mPlayerAlbumImage.setBackground(new BitmapDrawable(getResources(),
-                                    cover.getBitmap().copy(Bitmap.Config.ARGB_8888, false)));
-                        }
+                        BitmapDrawable cover = GlobalModel.getCurrentTrack().getAlbumImage();
+                        mPlayerAlbumImage.setBackground(new BitmapDrawable(getResources(),
+                                cover.getBitmap().copy(Bitmap.Config.ARGB_8888, false)));
                         cancel();
                     }
                 }

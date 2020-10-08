@@ -27,8 +27,10 @@ import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.BaseMusicContract;
 import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
+import ru.reactiveturtle.reactivemusic.player.mvp.PlayerPresenter;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.list.MusicListAdapter;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 
 public class PlaylistFragment extends Fragment implements PlaylistContract.Fragment {
     private Unbinder unbinder;
@@ -74,10 +76,14 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
         View view = inflater.inflate(R.layout.playlist_fragment, container, false);
         unbinder = ButterKnife.bind(this, view);
         mPlaylistAdapter = new PlaylistAdapter();
-        mMusicListAdapter = new MusicListAdapter();
+        LinearLayoutManager llm = new LinearLayoutManager(getContext());
+        mMusicListAdapter = new MusicListAdapter(llm);
         mRecyclerView.setAdapter(mPlaylistAdapter);
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        mPresenter.onPlaylistAvailable(this);
+        mRecyclerView.setLayoutManager(llm);
+
+        if (mPresenter != null) {
+            mPresenter.onPlaylistAvailable(this);
+        }
 
         mPlaylistAdapter.setOnItemClickListener(new PlaylistAdapter.OnItemClickListener() {
             @Override
@@ -108,7 +114,6 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
 
         mMusicListAdapter.setOnItemClickListener(musicInfo ->
                 mPresenter.onPlaylistMusicSelected(musicInfo));
-        System.out.println(Integer.toHexString(mInfo.getTextColors().getDefaultColor()));
         return view;
     }
 
@@ -140,12 +145,12 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
 
     @Override
     public void startMusic() {
-        mPlayPause.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_pause));
+        mPlayPause.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_pause));
     }
 
     @Override
     public void pauseMusic() {
-        mPlayPause.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_play));
+        mPlayPause.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_play));
     }
 
     @Override
@@ -185,8 +190,8 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
             getView().findViewById(R.id.playerSmallDivider).setBackgroundColor(Theme.CONTEXT_LIGHT);
         }
 
-        mPreviousTrack.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_previous));
-        mNextTrack.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_next));
+        mPreviousTrack.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_previous));
+        mNextTrack.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_next));
     }
 
     private PlaylistContract.Presenter mPresenter;

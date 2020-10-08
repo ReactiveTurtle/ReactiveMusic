@@ -42,7 +42,7 @@ public class MusicPresener implements IMusicService.Presenter {
             }
 
             @Override
-            public void onTrackChanged(MusicInfo currentTrack) {
+            public void onTrackPathUpdate(MusicInfo currentTrack) {
                 mView.playTrack(currentTrack.getPath());
             }
 
@@ -103,8 +103,7 @@ public class MusicPresener implements IMusicService.Presenter {
     @Override
     public void onPlayerPrepared(boolean isFirst, int duration) {
         GlobalModel.getCurrentTrack().setDuration(duration);
-        GlobalModel.setCurrentTrack(GlobalModel.getCurrentTrack(), GLOBAL_MODEL_LISTENER);
-        System.out.println("isPrepared");
+        GlobalModel.updateCurrentTrack(GlobalModel.getCurrentTrack().getPath(), GLOBAL_MODEL_LISTENER);
         mView.updateTrackProgress(0);
         mModel.setTrackPrepared(true);
         if (!isFirst && GlobalModel.isTrackPlay()) {
@@ -152,9 +151,6 @@ public class MusicPresener implements IMusicService.Presenter {
 
     @Override
     public void onPreviousTrack() {
-        if (!mModel.isTrackPrepared()) {
-            return;
-        }
         mModel.setTrackPrepared(false);
         if (!GlobalModel.isTrackPlay()) {
             GlobalModel.setTrackPlay(true, GLOBAL_MODEL_LISTENER);
@@ -181,9 +177,6 @@ public class MusicPresener implements IMusicService.Presenter {
 
     @Override
     public void onNextTrack() {
-        if (!mModel.isTrackPrepared()) {
-            return;
-        }
         mModel.setTrackPrepared(false);
         if (!GlobalModel.isTrackPlay()) {
             GlobalModel.setTrackPlay(true, GLOBAL_MODEL_LISTENER);
@@ -205,7 +198,7 @@ public class MusicPresener implements IMusicService.Presenter {
     @Override
     public void onMusicChanged(MusicInfo musicInfo) {
         mModel.setTrackPrepared(false);
-        GlobalModel.setCurrentTrack(musicInfo, GLOBAL_MODEL_LISTENER, 1);
+        GlobalModel.updateCurrentTrack(musicInfo.getPath(), GLOBAL_MODEL_LISTENER, 1);
         mView.showCurrentTrack(musicInfo);
     }
 
@@ -230,8 +223,7 @@ public class MusicPresener implements IMusicService.Presenter {
 
     private void updateNotification() {
         if (GlobalModel.getActivityState() != GlobalModel.ActivityState.RESUMED) {
-            mView.showPlayer(GlobalModel.getCurrentTrack() == null ?
-                    MusicInfo.getDefault() : GlobalModel.getCurrentTrack());
+            mView.showPlayer(GlobalModel.getCurrentTrack());
         }
     }
 }

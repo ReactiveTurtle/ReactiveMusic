@@ -11,11 +11,12 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
@@ -52,10 +53,12 @@ import ru.reactiveturtle.reactivemusic.player.mvp.PlayerPresenter;
 import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerRepository;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectMusicView;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectorContract;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 import ru.reactiveturtle.reactivemusic.player.service.MusicBroadcastReceiver;
 import ru.reactiveturtle.reactivemusic.player.service.MusicService;
-import ru.reactiveturtle.tools.text.TextDialog;
-import ru.reactiveturtle.tools.selection.SelectionDialog;
+import ru.reactiveturtle.tools.widget.text.TextDialog;
+import ru.reactiveturtle.tools.widget.selection.SelectionDialog;
+import ru.reactiveturtle.tools.widget.warning.MessageDialog;
 
 public class PlayerActivity extends AppCompatActivity implements PlayerContract.View {
     private PlayerContract.Presenter mPresenter;
@@ -79,7 +82,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         //enableScreenMode();
     }
 
-    private void enableScreenMode() {
+    private void enableScreenshotMode() {
         int height = getResources().getDisplayMetrics().heightPixels;
         Rect rectangle = new Rect();
         Window window = getWindow();
@@ -98,27 +101,11 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         MusicInfo.initDefault(getResources());
         PlayerRepository playerRepository = new PlayerRepository(this);
         Theme.init(getResources(), playerRepository.getThemeColorSet(), playerRepository.isThemeContextDark());
+        if (GlobalModel.getCurrentTrack().getAlbumImage() == null) {
+            GlobalModel.getCurrentTrack().setAlbumImage(Theme.getDefaultAlbumCover());
+        }
 
         ButterKnife.bind(this);
-
-        mCreateNameDialogBuilder =
-                Theme.getNameDialogBuilder()
-                        .setHint(getResources().getString(R.string.type_playlist_name))
-                        .setPositiveText(getResources().getString(R.string.create))
-                        .setNegativeText(getResources().getString(R.string.cancel))
-                        .setTitle(getResources().getString(R.string.playlist_creation))
-                        .setTextSize(16)
-                        .setText(getResources().getString(R.string.new_playlist))
-                        .setTextSelected(true);
-
-        mRenameDialogBuilder =
-                Theme.getNameDialogBuilder()
-                        .setHint(getResources().getString(R.string.type_playlist_name))
-                        .setPositiveText(getResources().getString(R.string.save))
-                        .setNegativeText(getResources().getString(R.string.cancel))
-                        .setTitle(getResources().getString(R.string.change_playlist))
-                        .setTextSize(16)
-                        .setTextSelected(true);
 
         setSupportActionBar(mToolbar);
         mToolbar.setNavigationOnClickListener(view -> mPresenter.onBackPressed());
@@ -126,6 +113,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         PlayerPresenter playerPresenter = GlobalModel.PLAYER_PRESENTER == null ?
                 new PlayerPresenter(playerRepository) : GlobalModel.PLAYER_PRESENTER;
         mPresenter = playerPresenter;
+        mPresenter.onRecreate();
         GlobalModel.PLAYER_PRESENTER = playerPresenter;
         playerPresenter.onView(this);
         initPlayerViewPager();
@@ -171,6 +159,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         GlobalModel.setActivityState(GlobalModel.ActivityState.STOPPED);
         if (mPresenter != null) {
             mPresenter.onStop();
+            mPresenter = null;
         }
         super.onDestroy();
     }
@@ -339,6 +328,11 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
     }
 
     @Override
+    public void bindMusicLists() {
+        mPlayerPagerAdapter.getListFragment().bindLists(mSelectMusicView.getSelectMusicList().getListAdapter());
+    }
+
+    @Override
     public void showMusicSelector(List<String> playlist) {
         if (Permissions.hasSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             if (!mDrawerLayout.isDrawerOpen(GravityCompat.END)) {
@@ -374,7 +368,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
                 .setBackground(new ColorDrawable(
                         Theme.IS_DARK ? Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY))
                 .setTitle(getResources().getString(R.string.choose_an_action))
-                .setDividerColor(Theme.setAlpha("8a", Theme.CONTEXT_LIGHT))
+                .setDividerColor(ThemeHelper.setAlpha("8a", Theme.CONTEXT_LIGHT))
                 .setTitleColor(Theme.CONTEXT_NEGATIVE_PRIMARY)
                 .addItems(rename, remove)
                 .build();
@@ -385,11 +379,39 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         selectionDialog.show(getSupportFragmentManager(), "selectionDialog");
     }
 
+    private MessageDialog.Builder mMessageDialogBuilder;
+    @Override
+    public void showWarningDialog(Object[][] stringBuilder, String parameter, int requestCode) {
+        StringBuilder builder = new StringBuilder();
+        for (Object[] object : stringBuilder) {
+            String string = "";
+            if (object[0] instanceof Integer) {
+                string = getResources().getString((Integer) object[0]);
+            } else if (object[0] instanceof String) {
+                string = (String) object[0];
+            }
+            if ((Boolean) object[1]) {
+                string = string.toLowerCase();
+            }
+            builder.append(string);
+        }
+        mMessageDialogBuilder.setTitle(builder.toString().trim());
+        MessageDialog messageDialog = mMessageDialogBuilder.buildDialog();
+        messageDialog.setOnClickListener(new MessageDialog.OnClickListener() {
+            @Override
+            public void onPositiveButtonClicked() {
+                mPresenter.onWarningClickedPositive(parameter, requestCode);
+                messageDialog.dismiss();
+            }
+        });
+        messageDialog.show(getSupportFragmentManager(), "MessageDialog");
+    }
+
     @Override
     public void showToolbarArrow() {
         Drawable drawable = Helper.getNavigationIcon(getResources(), R.drawable.ic_arrow_upward, -90);
         if (!Theme.isVeryBright(Theme.getColorSet().getPrimary())) {
-            Theme.changeColor(drawable, Color.WHITE);
+            ThemeHelper.changeColor(drawable, Color.WHITE);
         }
         mToolbar.setNavigationIcon(drawable);
     }
@@ -422,7 +444,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
 
     @Override
     public void updateWindowBackground() {
-        if (!GlobalModel.isFirstTrackLoad() && GlobalModel.getCurrentTrack() != null) {
+        if (!GlobalModel.isFirstTrackLoad()) {
             Bitmap bitmap;
             Canvas canvas;
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -430,11 +452,22 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
                     Theme.getDefaultAlbumCover().getBitmap())) {
                 bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
                 canvas = new Canvas(bitmap);
-                paint.setShader(new LinearGradient(0, 0, 0, 512,
+                paint.setShader(new RadialGradient(0, 0, 512,
                         new int[]{
+                                Theme.getColorSet().getPrimaryDark(),
                                 Theme.getColorSet().getPrimaryDark(),
                                 Theme.IS_DARK ?
                                         Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY
+                        },
+                        new float[]{
+                                0, 0.5f, 1
+                        }, Shader.TileMode.CLAMP));
+                canvas.drawRect(0, 0, bitmap.getWidth(), bitmap.getHeight(), paint);
+
+                paint.setShader(new RadialGradient(256, 256, 256,
+                        new int[]{
+                                Theme.getColorSet().getPrimary(),
+                                Color.TRANSPARENT
                         },
                         new float[]{
                                 0, 1
@@ -446,12 +479,20 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
                         .copy(Bitmap.Config.ARGB_8888, true);
             }
             DisplayMetrics dm = getResources().getDisplayMetrics();
-            float aspectRatio = dm.widthPixels / (float) dm.heightPixels;
-            Bitmap back = Bitmap.createBitmap((int) (bitmap.getHeight() * aspectRatio),
-                    bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+            Bitmap back;
+            if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+                float aspectRatio = dm.widthPixels / (float) dm.heightPixels;
+                back = Bitmap.createBitmap((int) (bitmap.getHeight() * aspectRatio),
+                        bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+            } else {
+                float aspectRatio = (float) dm.heightPixels / dm.widthPixels;
+                back = Bitmap.createBitmap(bitmap.getWidth(),
+                        (int) (bitmap.getHeight() * aspectRatio), Bitmap.Config.ARGB_8888);
+            }
             canvas = new Canvas(back);
-            canvas.drawBitmap(bitmap, (back.getWidth() - bitmap.getWidth()) / 2f, 0, paint);
-            int color = Theme.setAlpha("6a", Theme.IS_DARK ?
+            canvas.drawBitmap(bitmap, (back.getWidth() - bitmap.getWidth()) / 2f,
+                    (back.getHeight() - bitmap.getHeight()) / 2f, paint);
+            int color = ThemeHelper.setAlpha("6a", Theme.IS_DARK ?
                     Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY);
             paint.setColor(color);
             canvas.drawRect(0, 0, back.getWidth(), back.getHeight(), paint);
@@ -461,6 +502,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
             mDrawerLayout.setBackground(new ColorDrawable(Theme.IS_DARK ?
                     Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY));
         }
+        mSelectMusicView.updateBackground(mDrawerLayout.getBackground());
     }
 
     @Override
@@ -476,6 +518,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
             getWindow().setStatusBarColor(Theme.getColorSet().getPrimary());
         }
         updateBottomNavigationView();
+        updateDialogs();
         mSelectMusicView.updateTheme();
     }
 
@@ -485,7 +528,34 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         mBottomNavigationView.setBackgroundColor(Theme.IS_DARK ?
                 Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY);
         updateBottomNavigationView();
+        updateDialogs();
         mSelectMusicView.updateThemeContext();
+    }
+
+    private void updateDialogs() {
+        mCreateNameDialogBuilder =
+                Theme.getNameDialogBuilder()
+                        .setHint(getResources().getString(R.string.type_playlist_name))
+                        .setPositiveText(getResources().getString(R.string.create))
+                        .setNegativeText(getResources().getString(R.string.cancel))
+                        .setTitle(getResources().getString(R.string.playlist_creation))
+                        .setTextSize(16)
+                        .setText(getResources().getString(R.string.new_playlist))
+                        .setTextSelected(true);
+
+        mRenameDialogBuilder =
+                Theme.getNameDialogBuilder()
+                        .setHint(getResources().getString(R.string.type_playlist_name))
+                        .setPositiveText(getResources().getString(R.string.save))
+                        .setNegativeText(getResources().getString(R.string.cancel))
+                        .setTitle(getResources().getString(R.string.change_playlist))
+                        .setTextSize(16)
+                        .setTextSelected(true);
+
+        mMessageDialogBuilder =
+                Theme.getMessageDialogBuilder()
+                        .setPositiveText(getResources().getString(R.string.yes))
+                        .setNegativeText(getResources().getString(R.string.cancel));
     }
 
     public void updateBottomNavigationView() {

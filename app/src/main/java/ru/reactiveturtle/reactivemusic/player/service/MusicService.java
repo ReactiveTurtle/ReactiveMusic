@@ -13,18 +13,15 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.IBinder;
-import android.util.Log;
 import android.widget.RemoteViews;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
-import androidx.loader.content.Loader;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -36,6 +33,7 @@ import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerRepository;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.PlayerActivity;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
+import ru.reactiveturtle.tools.BaseAsyncTask;
 
 import static ru.reactiveturtle.reactivemusic.Helper.getArtUriFromMusicFile;
 
@@ -155,6 +153,7 @@ public class MusicService extends Service implements IMusicService.View {
 
     @Override
     public void onDestroy() {
+        GlobalModel.setServiceRunning(false);
         super.onDestroy();
     }
 
@@ -163,13 +162,9 @@ public class MusicService extends Service implements IMusicService.View {
         try {
             if (musicInfo != null) {
                 stopTimer();
-                Log.e("DEBUG", "flag 1");
                 mMusicPlayer.reset();
-                Log.e("DEBUG", "flag 2");
                 mMusicPlayer.setDataSource(musicInfo.getPath());
-                Log.e("DEBUG", "flag 3");
                 mMusicPlayer.prepareAsync();
-                Log.e("DEBUG", "flag 4");
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -304,9 +299,7 @@ public class MusicService extends Service implements IMusicService.View {
 
     @Override
     public void repeatTrack(boolean isRepeat) {
-        System.out.println("Is repeat: " + isRepeat);
         mMusicPlayer.setLooping(isRepeat);
-        System.out.println("Is looping: " + mMusicPlayer.isLooping());
     }
 
     @Override
@@ -322,25 +315,40 @@ public class MusicService extends Service implements IMusicService.View {
 
     @Override
     public void playTrack(@NonNull String path) {
+        //TODO: Переписать, сделать более плаавное обновление на экране
+        if (mMusicPlayer.isPlaying()) {
+            pauseMusic();
+            GlobalModel.setTrackProgress(0, true, 0);
+        }
+        GlobalModel.getCurrentTrack().setPath(path);
         if (musicInfoLoader != null) {
-            musicInfoLoader.cancelLoad();
+            musicInfoLoader.cancel(true);
+            musicInfoLoader = null;
+        }
+        if (albumCoverLoader != null) {
+            albumCoverLoader.cancel(true);
+            albumCoverLoader = null;
         }
         musicInfoLoader = new Loaders.MusicInfoLoader(this, path);
-        musicInfoLoader.registerListener(0, (loader, data) -> {
-            musicInfoLoader = null;
-            if (albumCoverLoader != null) {
-                albumCoverLoader.cancelLoad();
+        musicInfoLoader.setFinishCallback(new BaseAsyncTask.FinishCallback<MusicInfo>() {
+            @Override
+            public void onFinish(MusicInfo musicInfo) {
+                GlobalModel.updateTrackText(musicInfo);
             }
-            albumCoverLoader =
-                    new Loaders.AlbumCoverLoader(this, path, Theme.getDefaultAlbumCover());
-            albumCoverLoader.registerListener(0, (loader1, data1) -> {
-                albumCoverLoader = null;
-                data.setAlbumImage(data1);
-                mPresenter.onMusicChanged(data);
-            });
-            albumCoverLoader.forceLoad();
+
         });
-        musicInfoLoader.forceLoad();
+        musicInfoLoader.execute();
+        albumCoverLoader =
+                new Loaders.AlbumCoverLoader(this, path, Theme.getDefaultAlbumCover());
+        albumCoverLoader.setFinishCallback(new BaseAsyncTask.FinishCallback<BitmapDrawable>() {
+            @Override
+            public void onFinish(BitmapDrawable bitmapDrawable) {
+                GlobalModel.updateTrackCover(bitmapDrawable);
+                mPresenter.onMusicChanged(GlobalModel.getCurrentTrack());
+            }
+
+        });
+        albumCoverLoader.execute();
     }
 
     @Override
@@ -352,8 +360,9 @@ public class MusicService extends Service implements IMusicService.View {
         mPresenter.onPause();
         mPresenter.onDestroy();
         mMusicPlayer.release();
-        mPresenter.onPlayPause();
-        GlobalModel.setServiceRunning(false);
+        if (GlobalModel.isTrackPlay()) {
+            mPresenter.onPlayPause();
+        }
         stopSelf();
     }
 

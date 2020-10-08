@@ -1,6 +1,5 @@
 package ru.reactiveturtle.reactivemusic.player.mvp.view.selector;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.media.MediaPlayer;
@@ -38,7 +37,8 @@ import ru.reactiveturtle.reactivemusic.Permissions;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.Sorter;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
-import ru.reactiveturtle.tools.WaitDailog;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
+import ru.reactiveturtle.tools.widget.wait.WaitDailog;
 
 public class SelectMusicFilesFragment extends Fragment {
     private View mBackItem;
@@ -73,7 +73,7 @@ public class SelectMusicFilesFragment extends Fragment {
         icon.setBackgroundResource(R.drawable.ic_arrow_upward);
         icon.setScaleX(0.75f);
         icon.setScaleY(0.75f);
-        Theme.changeColor(icon.getBackground(), Theme.CONTEXT_NEGATIVE_PRIMARY);
+        ThemeHelper.changeColor(icon.getBackground(), Theme.CONTEXT_NEGATIVE_PRIMARY);
         ((TextView) mBackItem.findViewById(R.id.directory_adapter_name)).setText("...");
         mBackItem.findViewById(R.id.directory_adapter_mask_view).setOnClickListener(v -> {
             if (root != null && root.getParentFile() != null
@@ -258,13 +258,13 @@ public class SelectMusicFilesFragment extends Fragment {
 
     public void updateThemeContext() {
         if (getView() != null) {
-            Theme.changeColor(mBackItem.findViewById(R.id.directory_adapter_type)
+            ThemeHelper.changeColor(mBackItem.findViewById(R.id.directory_adapter_type)
                     .getBackground(), Theme.CONTEXT_NEGATIVE_PRIMARY);
             ((TextView) mBackItem.findViewById(R.id.directory_adapter_name))
                     .setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
 
             mEditText.setTextColor(ColorStateList.valueOf(Theme.CONTEXT_NEGATIVE_PRIMARY));
-            Theme.changeColor(mEditText.getBackground(), Theme.CONTEXT_LIGHT);
+            ThemeHelper.changeColor(mEditText.getBackground(), Theme.CONTEXT_LIGHT);
         }
     }
 

@@ -21,11 +21,13 @@ import butterknife.OnClick;
 import butterknife.OnLongClick;
 import butterknife.Unbinder;
 import ru.reactiveturtle.reactivemusic.R;
-import ru.reactiveturtle.reactivemusic.player.BaseMusicContract;
 import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
+import ru.reactiveturtle.reactivemusic.player.mvp.PlayerPresenter;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectMusicListAdapter;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 
 public class MusicListFragment extends Fragment implements MusicListContract.Fragment {
     private Unbinder unbinder;
@@ -64,18 +66,23 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
     @BindView(R.id.playerSmallInfo)
     protected TextView mInfo;
 
+    private Loaders.TracksPathsLoader mTracksPathsLoader;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.player_music_list_fragment, container);
         unbinder = ButterKnife.bind(this, view);
 
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        mMusicListAdapter = new MusicListAdapter();
+        LinearLayoutManager llm = new LinearLayoutManager(getContext());
+        mRecyclerView.setLayoutManager(llm);
+        mMusicListAdapter = new MusicListAdapter(llm);
         mRecyclerView.setAdapter(mMusicListAdapter);
         if (getContext() != null) {
-            Loaders.TracksPathsLoader tracksPathsLoader = new Loaders.TracksPathsLoader(getContext());
-            tracksPathsLoader.registerListener(0, (loader, tracks) -> {
+            mTracksPathsLoader = new Loaders.TracksPathsLoader(getContext());
+            mTracksPathsLoader.registerListener(0, (loader, tracks) -> {
+                mTracksPathsLoader = null;
+                assert tracks != null;
                 if (tracks.size() <= 0) {
                     mEmpty.setVisibility(View.VISIBLE);
                 }
@@ -97,9 +104,11 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
                     Objects.requireNonNull(mPresenter);
                     mPresenter.onNextTrack();
                 });
-                mPresenter.onMusicListAvailable(this);
+                if (mPresenter != null) {
+                    mPresenter.onMusicListAvailable(this);
+                }
             });
-            tracksPathsLoader.forceLoad();
+            mTracksPathsLoader.forceLoad();
         }
         return view;
     }
@@ -114,6 +123,10 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (mTracksPathsLoader != null) {
+            mTracksPathsLoader.cancelLoad();
+            mTracksPathsLoader = null;
+        }
         unbinder.unbind();
         mPresenter = null;
     }
@@ -135,12 +148,12 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
 
     @Override
     public void startMusic() {
-        mPlayPause.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_pause));
+        mPlayPause.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_pause));
     }
 
     @Override
     public void pauseMusic() {
-        mPlayPause.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_play));
+        mPlayPause.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_play));
     }
 
     @Override
@@ -177,8 +190,8 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
             getView().findViewById(R.id.playerSmallDivider).setBackgroundColor(Theme.CONTEXT_LIGHT);
         }
 
-        mPreviousTrack.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_previous));
-        mNextTrack.setBackground(Theme.getDefaultButtonDrawable(R.drawable.ic_next));
+        mPreviousTrack.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_previous));
+        mNextTrack.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_next));
     }
 
     @OnClick(R.id.playerSmallClicker)
@@ -194,5 +207,10 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
     @Override
     public void scrollToPosition(int index) {
         mRecyclerView.smoothScrollToPosition(index);
+    }
+
+    @Override
+    public void bindLists(SelectMusicListAdapter adapter) {
+        mMusicListAdapter.bind(adapter);
     }
 }

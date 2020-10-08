@@ -1,8 +1,5 @@
 package ru.reactiveturtle.reactivemusic.player.mvp;
 
-import android.os.Handler;
-import android.os.Looper;
-
 import androidx.annotation.NonNull;
 
 import java.util.List;
@@ -33,15 +30,16 @@ public class PlayerPresenter implements PlayerContract.Presenter,
     public PlayerPresenter(@NonNull PlayerContract.Repository repository) {
         mModel = new PlayerModel();
         mRepository = repository;
+    }
 
+    @Override
+    public void onRecreate() {
         GlobalModel.registerListener(GLOBAL_MODEL_LISTENER, new GlobalModel.OnModelUpdateListener() {
             @Override
-            public void onTrackChanged(MusicInfo currentTrack) {
+            public void onTrackTextUpdated(MusicInfo currentTrack) {
                 onShowCurrentTrackInfo(currentTrack);
-                System.out.println(GlobalModel.isFirstTrackLoad());
                 if (GlobalModel.isFirstTrackLoad()) {
                     GlobalModel.setFirstTrackLoad(false);
-                    System.out.println("show drawer");
                     new Timer().schedule(new TimerTask() {
                         @Override
                         public void run() {
@@ -51,6 +49,11 @@ public class PlayerPresenter implements PlayerContract.Presenter,
                         }
                     }, 1000);
                 }
+            }
+
+            @Override
+            public void onTrackCoverUpdated(MusicInfo currentTrack) {
+                updateTrackCover();
             }
 
             @Override
@@ -99,6 +102,17 @@ public class PlayerPresenter implements PlayerContract.Presenter,
     public void onMusicFragmentAvailable(MusicContract.Fragment fragment) {
         mMusicFragment = fragment;
         updateCurrentTrackInfo();
+        updateTrackCover();
+    }
+
+
+    private void updateTrackCover() {
+        if (mMusicFragment != null) {
+            mMusicFragment.updateTrackCover(GlobalModel.getCurrentTrack().getAlbumImage());
+        }
+        if (mView != null) {
+            mView.updateWindowBackground();
+        }
     }
 
     private MusicListContract.Fragment mMusicListFragment;
@@ -106,6 +120,7 @@ public class PlayerPresenter implements PlayerContract.Presenter,
     @Override
     public void onMusicListAvailable(MusicListContract.Fragment fragment) {
         mMusicListFragment = fragment;
+        mView.bindMusicLists();
         onShowCurrentTrackInfo(GlobalModel.getCurrentTrack());
     }
 
@@ -117,7 +132,7 @@ public class PlayerPresenter implements PlayerContract.Presenter,
     @Override
     public void onMusicChanged(MusicInfo musicInfo, String playlist) {
         mRepository.setCurrentPlaylist(playlist);
-        GlobalModel.setCurrentTrack(musicInfo, 1);
+        GlobalModel.updateCurrentTrack(musicInfo.getPath(), 1);
         GlobalModel.setTrackPlay(true, 1);
     }
 
@@ -183,6 +198,7 @@ public class PlayerPresenter implements PlayerContract.Presenter,
     @Override
     public void onStop() {
         GlobalModel.unregisterListener(1);
+        clearAllLinks();
     }
 
     @Override
@@ -247,13 +263,31 @@ public class PlayerPresenter implements PlayerContract.Presenter,
                 mView.showRenameDialog(playlistName);
                 break;
             case 1:
-                mRepository.removePlaylistName(playlistName);
+                mView.showWarningDialog(new Object[][]{
+                        new Object[]{R.string.you_really_want, false},
+                        new Object[]{" ", false},
+                        new Object[]{R.string.delete, true},
+                        new Object[]{" ", false},
+                        new Object[]{R.string.playlist, true},
+                        new Object[]{" \"", false},
+                        new Object[]{playlistName, false},
+                        new Object[]{"\"", false},
+                        new Object[]{"?", false},
+                }, playlistName, 0);
+                break;
+        }
+    }
+
+    @Override
+    public void onWarningClickedPositive(String parameter, int requestCode) {
+        switch (requestCode) {
+            case 0:
+                mRepository.removePlaylistName(parameter);
                 if (mRepository.getCurrentPlaylist() != null
-                        && mRepository.getCurrentPlaylist().equals(playlistName)) {
+                        && mRepository.getCurrentPlaylist().equals(parameter)) {
                     mRepository.setCurrentPlaylist(null);
                 }
-                mPlaylistFragment.removePlaylist(playlistName);
-                break;
+                mPlaylistFragment.removePlaylist(parameter);
         }
     }
 
@@ -276,10 +310,7 @@ public class PlayerPresenter implements PlayerContract.Presenter,
         if (mMusicFragment != null) {
             mMusicFragment.updateTrackProgressSafely(GlobalModel.getTrackProgress());
         }
-        float progressPercent = 0;
-        if (GlobalModel.getCurrentTrack() != null) {
-            progressPercent = (float) GlobalModel.getTrackProgress() / GlobalModel.getCurrentTrack().getDuration();
-        }
+        float progressPercent = (float) GlobalModel.getTrackProgress() / GlobalModel.getCurrentTrack().getDuration();
         Theme.updateProgressDrawable(progressPercent);
     }
 
@@ -372,18 +403,16 @@ public class PlayerPresenter implements PlayerContract.Presenter,
 
     private void updateCurrentTrackInfo() {
         MusicInfo musicInfo = GlobalModel.getCurrentTrack();
-        if (musicInfo != null) {
-            if (mMusicFragment != null) {
-                mMusicFragment.showCurrentTrack(musicInfo);
-            }
-            if (mPlaylistFragment != null) {
-                mPlaylistFragment.showCurrentTrack(musicInfo);
-            }
-            if (mMusicListFragment != null) {
-                mMusicListFragment.showCurrentTrack(musicInfo);
-            }
-
+        if (mMusicFragment != null) {
+            mMusicFragment.showCurrentTrack(musicInfo);
         }
+        if (mPlaylistFragment != null) {
+            mPlaylistFragment.showCurrentTrack(musicInfo);
+        }
+        if (mMusicListFragment != null) {
+            mMusicListFragment.showCurrentTrack(musicInfo);
+        }
+
         if (GlobalModel.isTrackPlay()) {
             onPlay();
         } else {
@@ -393,7 +422,6 @@ public class PlayerPresenter implements PlayerContract.Presenter,
             mMusicFragment.repeatTrack(GlobalModel.isRepeatTrack());
             mMusicFragment.playRandomTrack(GlobalModel.isPlayRandomTrack());
         }
-        mView.updateWindowBackground();
     }
 
     private SettingsContract.Fragment mSettingsFragment;
@@ -416,7 +444,6 @@ public class PlayerPresenter implements PlayerContract.Presenter,
     @Override
     public void onUpdateContextTheme() {
         mRepository.setThemeContextDark(Theme.IS_DARK);
-        System.out.println("update theme context: " + GlobalModel.isFirstTrackLoad());
         mView.updateThemeContext();
         mMusicFragment.updateThemeContext();
         mPlaylistFragment.updateThemeContext();

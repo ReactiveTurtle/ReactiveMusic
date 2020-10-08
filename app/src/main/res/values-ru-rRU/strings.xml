@@ -37,4 +37,7 @@
     <string name="unknown_artist">Неизвестный исполнитель</string>
     <string name="unknown_track">Неизвестная дорожка</string>
     <string name="tracks_not_found">Не найдено ни одного трека на устройстве</string>
+    <string name="yes">Да</string>
+    <string name="you_really_want">Вы действительно хотите</string>
+    <string name="playlist">Плейлист</string>
 </resources>

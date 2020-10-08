@@ -7,20 +7,27 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import butterknife.BindView;
+import butterknife.ButterKnife;
 import butterknife.OnClick;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.list.MusicListAdapter;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 
 public class SelectMusicListAdapter extends MusicListAdapter {
     private List<String> mSelectedFiles = new ArrayList<>();
+
+    public SelectMusicListAdapter(@NonNull LinearLayoutManager linearLayoutManager) {
+        super(linearLayoutManager);
+    }
 
     @NonNull
     @Override
@@ -32,7 +39,7 @@ public class SelectMusicListAdapter extends MusicListAdapter {
     @Override
     public void onBindViewHolder(@NonNull MusicViewHolder holder, int position) {
         super.onBindViewHolder(holder, position);
-        ((SelectMusicViewHolder) holder).checkBox.setBackground(Theme.getCheckDrawable(
+        ((SelectMusicViewHolder) holder).checkBox.setBackground(ThemeHelper.getCheckDrawable(
                 R.drawable.ic_check, R.drawable.ic_check, BitmapDrawable.class));
         ((SelectMusicViewHolder) holder).checkBox.setChecked(
                 mSelectedFiles.contains(mMusicList.get(position).getPath()));

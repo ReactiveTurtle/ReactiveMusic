@@ -1,5 +1,7 @@
 package ru.reactiveturtle.reactivemusic.player.mvp.view.selector;
 
+import android.graphics.drawable.Drawable;
+
 import androidx.annotation.NonNull;
 
 import java.util.List;
@@ -20,6 +22,10 @@ public interface SelectorContract {
         void onResume();
 
         void onPause();
+
+        SelectMusicListFragment getSelectMusicList();
+
+        void updateBackground(Drawable drawable);
     }
 
     interface Presenter {

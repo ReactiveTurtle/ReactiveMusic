@@ -26,10 +26,9 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
-import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
-import ru.reactiveturtle.tools.WaitDailog;
+import ru.reactiveturtle.tools.widget.wait.WaitDailog;
 
 public class SelectMusicListFragment extends Fragment {
     @BindView(R.id.selectMusicListRecyclerView)
@@ -52,25 +51,21 @@ public class SelectMusicListFragment extends Fragment {
         View view = inflater.inflate(R.layout.select_music_list_fragment, container);
         ButterKnife.bind(this, view);
 
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        mMusicListAdapter = new SelectMusicListAdapter();
+        LinearLayoutManager llm = new LinearLayoutManager(getContext());
+        mRecyclerView.setLayoutManager(llm);
+        mMusicListAdapter = new SelectMusicListAdapter(llm);
         mRecyclerView.setAdapter(mMusicListAdapter);
         mRecyclerView.setItemAnimator(null);
         if (getContext() != null) {
-            Loaders.TracksPathsLoader loader = new Loaders.TracksPathsLoader(getContext());
-            loader.registerListener(0, (loader1, tracks) -> {
-                mMusicListAdapter.addPaths(tracks);
-                mMusicListAdapter.setOnItemClickListener((musicInfo, isChecked) -> {
-                    if (isChecked) {
-                        mMusicListAdapter.removeSelectedItem(musicInfo.getPath());
-                    } else {
-                        mMusicListAdapter.addSelectedItem(musicInfo.getPath());
-                    }
-                    Objects.requireNonNull(mOnCheckListener);
-                    mOnCheckListener.onChecked(musicInfo.getPath(), isChecked);
-                });
+            mMusicListAdapter.setOnItemClickListener((musicInfo, isChecked) -> {
+                if (isChecked) {
+                    mMusicListAdapter.removeSelectedItem(musicInfo.getPath());
+                } else {
+                    mMusicListAdapter.addSelectedItem(musicInfo.getPath());
+                }
+                Objects.requireNonNull(mOnCheckListener);
+                mOnCheckListener.onChecked(musicInfo.getPath(), isChecked);
             });
-            loader.forceLoad();
         }
         return view;
     }
@@ -148,6 +143,10 @@ public class SelectMusicListFragment extends Fragment {
 
     public void setSelectedItems(List<String> playlist) {
         mMusicListAdapter.setSelectedItems(playlist);
+    }
+
+    public SelectMusicListAdapter getListAdapter() {
+        return mMusicListAdapter;
     }
 
     public interface OnCheckListener {

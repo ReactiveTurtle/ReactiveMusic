@@ -38,4 +38,7 @@
     <string name="tracks_not_found">No tracks found on device</string>
     <string name="test_banner_unit_id" translatable="false">ca-app-pub-3940256099942544/6300978111</string>
     <string name="settings_banner_unit_id" translatable="false">ca-app-pub-1704359746704040/6937315033</string>
+    <string name="yes">Yes</string>
+    <string name="you_really_want">You really want</string>
+    <string name="playlist">Playlist</string>
 </resources>

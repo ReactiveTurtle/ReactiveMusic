@@ -4,6 +4,7 @@ import android.content.res.Resources;
 import android.graphics.drawable.BitmapDrawable;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import ru.reactiveturtle.reactivemusic.R;
 
@@ -59,11 +60,15 @@ public class MusicInfo {
                 TRACKS_NOT_FOUND, TRACKS_NOT_FOUND, 0);
     }
 
-    public void setPath(@NonNull String path) {
+    public static MusicInfo getEmpty() {
+        return new MusicInfo("", "", "", "", -1);
+    }
+
+    public void setPath(@Nullable String path) {
         this.mPath = path;
     }
 
-    @NonNull
+    @Nullable
     public String getPath() {
         return mPath;
     }
@@ -76,14 +81,29 @@ public class MusicInfo {
         return mAlbumImage;
     }
 
+    public void setAlbum(@Nullable String album) {
+        mAlbum = album == null ? UNKNOWN_ALBUM : album;
+    }
+
+    @NonNull
     public String getAlbum() {
         return mAlbum;
     }
 
+    public void setArtist(@Nullable String artist) {
+        mArtist = artist == null ? UNKNOWN_ARTIST : artist;
+    }
+
+    @NonNull
     public String getArtist() {
         return mArtist;
     }
 
+    public void setTitle(@Nullable String title) {
+        mTitle = title == null ? UNKNOWN_TRACK : title;
+    }
+
+    @NonNull
     public String getTitle() {
         return mTitle;
     }
@@ -94,5 +114,17 @@ public class MusicInfo {
 
     public int getDuration() {
         return mDuration;
+    }
+
+    @Override
+    public String toString() {
+        return "MusicInfo{" +
+                "mPath='" + mPath + '\'' +
+                ", mAlbumImage=" + mAlbumImage +
+                ", mAlbum='" + mAlbum + '\'' +
+                ", mArtist='" + mArtist + '\'' +
+                ", mTitle='" + mTitle + '\'' +
+                ", mDuration=" + mDuration +
+                '}';
     }
 }

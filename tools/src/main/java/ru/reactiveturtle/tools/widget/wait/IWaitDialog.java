@@ -1,4 +1,4 @@
-package ru.reactiveturtle.tools;
+package ru.reactiveturtle.tools.widget.wait;
 
 import android.graphics.drawable.Drawable;
 

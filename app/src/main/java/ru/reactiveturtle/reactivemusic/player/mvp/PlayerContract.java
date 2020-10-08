@@ -80,6 +80,8 @@ public interface PlayerContract {
 
         void hideNameDialog();
 
+        void bindMusicLists();
+
         void showMusicSelector(List<String> playlist);
 
         void showSelectedTrack(@NonNull String path);
@@ -87,6 +89,8 @@ public interface PlayerContract {
         void hideSelectedTrack(@NonNull String path);
 
         void showPlaylistActions(String playlistName);
+
+        void showWarningDialog(Object[][] stringBuilder, String parameter, int requestCode);
 
         void showToolbarArrow();
 
@@ -108,6 +112,8 @@ public interface PlayerContract {
     }
 
     interface Presenter extends ReceiverPresenter {
+        void onRecreate();
+
         void onView(View view);
 
         void clearAllLinks();
@@ -125,6 +131,8 @@ public interface PlayerContract {
         void onRenamePlaylist(String oldName, String newName);
 
         void onPlaylistActionSelected(String playlistName, int position);
+
+        void onWarningClickedPositive(String parameter, int requestCode);
     }
 
     interface ReceiverPresenter extends BaseMusicContract.Presenter {

@@ -1,5 +1,6 @@
 package ru.reactiveturtle.reactivemusic.player;
 
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -44,7 +45,7 @@ public class GlobalModel {
         RESUMED, PAUSED, STOPPED
     }
 
-    private static MusicInfo CURRENT_TRACK;
+    private static final MusicInfo CURRENT_TRACK = MusicInfo.getDefault();
     private static boolean IS_FIRST_TRACK_LOAD = true;
 
     public static boolean isFirstTrackLoad() {
@@ -55,17 +56,49 @@ public class GlobalModel {
         IS_FIRST_TRACK_LOAD = isFirstTrackLoad;
     }
 
-    public static void setCurrentTrack(MusicInfo currentTrack, int... exceptionIds) {
-        CURRENT_TRACK = currentTrack;
+    public static void updateCurrentTrack(@Nullable String path, int... exceptionIds) {
+        CURRENT_TRACK.setPath(path);
         for (int i = 0; i < LISTENERS.size(); i++) {
             if (isNotException(LISTENERS.keyAt(i), exceptionIds)) {
                 OnModelUpdateListener listener = LISTENERS.valueAt(i);
-                handler.post(() -> listener.onTrackChanged(currentTrack));
+                handler.post(() -> {
+                    listener.onTrackPathUpdate(CURRENT_TRACK);
+                });
             }
         }
     }
 
-    @Nullable
+    public static void updateTrackText(@Nullable MusicInfo data, int... exceptionIds) {
+        if (data != null) {
+            CURRENT_TRACK.setPath(data.getPath());
+            CURRENT_TRACK.setAlbum(data.getAlbum());
+            CURRENT_TRACK.setArtist(data.getArtist());
+            CURRENT_TRACK.setTitle(data.getTitle());
+            CURRENT_TRACK.setDuration(data.getDuration());
+            for (int i = 0; i < LISTENERS.size(); i++) {
+                if (isNotException(LISTENERS.keyAt(i), exceptionIds)) {
+                    OnModelUpdateListener listener = LISTENERS.valueAt(i);
+                    handler.post(() -> {
+                        listener.onTrackTextUpdated(CURRENT_TRACK);
+                    });
+                }
+            }
+        }
+    }
+
+    public static void updateTrackCover(@NonNull BitmapDrawable cover, int... exceptionIds) {
+        CURRENT_TRACK.setAlbumImage(cover);
+        for (int i = 0; i < LISTENERS.size(); i++) {
+            if (isNotException(LISTENERS.keyAt(i), exceptionIds)) {
+                OnModelUpdateListener listener = LISTENERS.valueAt(i);
+                handler.post(() -> {
+                    listener.onTrackCoverUpdated(CURRENT_TRACK);
+                });
+            }
+        }
+    }
+
+    @NonNull
     public static MusicInfo getCurrentTrack() {
         return CURRENT_TRACK;
     }
@@ -162,7 +195,15 @@ public class GlobalModel {
 
         }
 
-        public void onTrackChanged(MusicInfo currentTrack) {
+        public void onTrackPathUpdate(MusicInfo currentTrack) {
+
+        }
+
+        public void onTrackTextUpdated(MusicInfo currentTrack) {
+
+        }
+
+        public void onTrackCoverUpdated(MusicInfo currentTrack) {
 
         }
 

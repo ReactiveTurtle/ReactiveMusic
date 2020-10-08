@@ -211,7 +211,6 @@ public class PlayerRepository implements PlayerContract.Repository {
             }
             return new ArrayList<>(Arrays.asList(tracksArray));
         } else {
-            System.out.println("Context: " + context);
             return Helper.getAllTracksPathsInfo(context);
         }
     }

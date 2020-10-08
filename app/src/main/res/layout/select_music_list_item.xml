@@ -5,6 +5,7 @@
     android:layout_height="wrap_content">
 
     <include
+        android:id="@+id/selectMusicInfo"
         layout="@layout/player_music_list_item"
         android:layout_width="0dp"
         android:layout_height="0dp"

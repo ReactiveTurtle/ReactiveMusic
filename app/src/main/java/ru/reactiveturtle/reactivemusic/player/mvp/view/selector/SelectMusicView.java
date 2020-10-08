@@ -24,6 +24,7 @@ import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.mvp.PlayerContract;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 
 public class SelectMusicView implements SelectorContract.View {
     private ViewPager2 mViewPager;
@@ -157,6 +158,11 @@ public class SelectMusicView implements SelectorContract.View {
     }
 
     @Override
+    public SelectMusicListFragment getSelectMusicList() {
+        return (SelectMusicListFragment) mPagerAdapter.getFragment(0);
+    }
+
+    @Override
     public void updateTheme() {
         mToolbar.setBackgroundColor(Theme.getColorSet().getPrimary());
         Drawable drawable = Helper.getNavigationIcon(
@@ -165,7 +171,7 @@ public class SelectMusicView implements SelectorContract.View {
         if (Theme.isVeryBright(Theme.getColorSet().getPrimary())) {
             mToolbar.setTitleTextColor(Color.BLACK);
         } else {
-            Theme.changeColor(drawable, Color.WHITE);
+            ThemeHelper.changeColor(drawable, Color.WHITE);
             mToolbar.setTitleTextColor(Color.WHITE);
         }
         mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).updateTheme();
@@ -174,7 +180,11 @@ public class SelectMusicView implements SelectorContract.View {
 
     @Override
     public void updateThemeContext() {
-        mViewPager.setBackgroundColor(Theme.CONTEXT_PRIMARY);
         mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).updateThemeContext();
+    }
+
+    @Override
+    public void updateBackground(Drawable drawable) {
+        mViewPager.setBackground(drawable);
     }
 }

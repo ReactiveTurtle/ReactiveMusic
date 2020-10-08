@@ -3,6 +3,8 @@ package ru.reactiveturtle.reactivemusic.player;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import ru.reactiveturtle.reactivemusic.player.mvp.PlayerPresenter;
+
 public interface BaseMusicContract {
     interface Repository extends BaseModel {
         void setCurrentMusic(@Nullable MusicInfo musicInfo);

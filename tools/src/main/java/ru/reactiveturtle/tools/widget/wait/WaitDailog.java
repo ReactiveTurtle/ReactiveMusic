@@ -1,7 +1,5 @@
-package ru.reactiveturtle.tools;
+package ru.reactiveturtle.tools.widget.wait;
 
-import android.app.Dialog;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.LightingColorFilter;
 import android.graphics.drawable.Drawable;
@@ -19,7 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
-import ru.reactiveturtle.tools.text.TextDialog;
+import ru.reactiveturtle.tools.R;
 
 public class WaitDailog extends DialogFragment {
     private TextView mTitle;

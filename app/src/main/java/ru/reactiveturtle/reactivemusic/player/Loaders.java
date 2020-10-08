@@ -1,5 +1,6 @@
 package ru.reactiveturtle.reactivemusic.player;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -18,6 +19,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.provider.MediaStore;
 import android.webkit.MimeTypeMap;
 
@@ -35,6 +37,7 @@ import java.util.List;
 import java.util.Objects;
 
 import ru.reactiveturtle.reactivemusic.Helper;
+import ru.reactiveturtle.tools.BaseAsyncTask;
 
 import static ru.reactiveturtle.reactivemusic.Helper.getArtUriFromMusicFile;
 import static ru.reactiveturtle.reactivemusic.Helper.getDrawable;
@@ -76,7 +79,7 @@ public abstract class Loaders {
         }
     }
 
-    public static class AlbumCoverLoader extends AsyncTaskLoader<BitmapDrawable> {
+    public static class AlbumCoverLoader extends BaseAsyncTask<BitmapDrawable> {
         private String trackPath;
         private BitmapDrawable defaultAlbumCover;
 
@@ -87,8 +90,7 @@ public abstract class Loaders {
         }
 
         @Nullable
-        @Override
-        public BitmapDrawable loadInBackground() {
+        public BitmapDrawable doInBackground(Void... voids) {
             try {
                 return getDrawable(getContext().getContentResolver(),
                         getArtUriFromMusicFile(getContext(), trackPath), 256);
@@ -107,9 +109,19 @@ public abstract class Loaders {
             }
             return defaultAlbumCover;
         }
+
+        @Override
+        protected void onPostExecute(BitmapDrawable bitmapDrawable) {
+            super.onPostExecute(bitmapDrawable);
+        }
+
+        @Override
+        protected void onCancelled() {
+            super.onCancelled();
+        }
     }
 
-    public static class MusicInfoLoader extends AsyncTaskLoader<MusicInfo> {
+    public static class MusicInfoLoader extends BaseAsyncTask<MusicInfo> {
         @NonNull
         private String trackPath;
 
@@ -119,8 +131,8 @@ public abstract class Loaders {
             this.trackPath = trackPath;
         }
 
-        @Override
-        public MusicInfo loadInBackground() {
+        @Nullable
+        public MusicInfo doInBackground(Void... voids) {
             String[] proj = {MediaStore.Audio.Media.DATA,
                     MediaStore.Audio.Media.ALBUM,
                     MediaStore.Audio.Media.ARTIST,
@@ -143,6 +155,16 @@ public abstract class Loaders {
                 musicInfo = getMusicInfo(trackPath);
             }
             return musicInfo;
+        }
+
+        @Override
+        protected void onPostExecute(MusicInfo musicInfo) {
+            super.onPostExecute(musicInfo);
+        }
+
+        @Override
+        protected void onCancelled() {
+            super.onCancelled();
         }
 
         public static MusicInfo getMusicInfo(Cursor cursor) {

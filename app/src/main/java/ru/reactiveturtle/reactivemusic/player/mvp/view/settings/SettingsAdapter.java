@@ -64,7 +64,6 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.LineVi
 
         public void showItem(ConstraintLayout itemRoot, int index) {
             if (index < items.size()) {
-                System.out.println(index);
                 SettingsItem item = items.get(index);
                 View icon = itemRoot.findViewById(R.id.settingsItemIcon);
                 TextView title = itemRoot.findViewById(R.id.settingsItemTitle);

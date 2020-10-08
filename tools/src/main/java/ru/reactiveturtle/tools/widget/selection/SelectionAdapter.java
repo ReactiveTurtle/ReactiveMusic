@@ -1,22 +1,15 @@
-package ru.reactiveturtle.tools.selection;
+package ru.reactiveturtle.tools.widget.selection;
 
-import android.annotation.SuppressLint;
 import android.text.Spannable;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.AlphaAnimation;
-import android.view.animation.Animation;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import ru.reactiveturtle.tools.R;
@@ -34,7 +27,6 @@ public class SelectionAdapter extends RecyclerView.Adapter<SelectionAdapter.View
     @Override
     public void onBindViewHolder(@NonNull ViewSelectionHolder holder, int i) {
         holder.textView.setText(viewNames.get(i));
-        System.out.println(Integer.toHexString(holder.textView.getTextColors().getDefaultColor()));
     }
 
     @Override

@@ -1,13 +1,11 @@
-package ru.reactiveturtle.tools.selection;
+package ru.reactiveturtle.tools.widget.selection;
 
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Spannable;
-import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,7 +25,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import ru.reactiveturtle.tools.R;
-import ru.reactiveturtle.tools.Helper;
 
 public class SelectionDialog extends BottomSheetDialogFragment {
     private SelectionAdapter adapter;
