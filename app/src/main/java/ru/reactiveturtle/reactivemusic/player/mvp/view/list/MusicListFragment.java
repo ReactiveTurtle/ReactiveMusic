@@ -13,7 +13,8 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.util.Objects;
+import java.util.Arrays;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -21,15 +22,20 @@ import butterknife.OnClick;
 import butterknife.OnLongClick;
 import butterknife.Unbinder;
 import ru.reactiveturtle.reactivemusic.R;
-import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
-import ru.reactiveturtle.reactivemusic.player.mvp.PlayerPresenter;
+import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerModel;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectMusicListAdapter;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
+import ru.reactiveturtle.reactivemusic.player.service.Bridges;
+import ru.reactiveturtle.reactivemusic.player.service.MusicModel;
+import ru.reactiveturtle.tools.reactiveuvm.Bridge;
+import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
+import ru.reactiveturtle.tools.reactiveuvm.StateKeeper;
+import ru.reactiveturtle.tools.reactiveuvm.fragment.ArchitectFragment;
 
-public class MusicListFragment extends Fragment implements MusicListContract.Fragment {
+public class MusicListFragment extends ArchitectFragment {
     private Unbinder unbinder;
 
     public static MusicListFragment newInstance() {
@@ -44,7 +50,6 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mPresenter = GlobalModel.PLAYER_PRESENTER;
     }
 
     @BindView(R.id.player_music_list_recycler_view)
@@ -71,7 +76,11 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.player_music_list_fragment, container);
+        return inflater.inflate(R.layout.player_music_list_fragment, container);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         unbinder = ButterKnife.bind(this, view);
 
         LinearLayoutManager llm = new LinearLayoutManager(getContext());
@@ -87,38 +96,63 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
                     mEmpty.setVisibility(View.VISIBLE);
                 }
                 mMusicListAdapter.addPaths(tracks);
-                mMusicListAdapter.setOnItemClickListener(musicInfo ->
-                        mPresenter.onMusicChanged(musicInfo, null));
+                mMusicListAdapter.setOnItemClickListener(new MusicListAdapter.OnItemClickListener() {
+                    @Override
+                    public void onClick(MusicInfo musicInfo) {
+                        MusicModel.setCurrentTrackPath(musicInfo.getPath());
+                    }
 
-                mPreviousTrack.setOnClickListener((v) -> {
-                    Objects.requireNonNull(mPresenter);
-                    mPresenter.onPreviousTrack();
+                    @Override
+                    public void onLongClick(String trackPath) {
+                        ReactiveArchitect.getStringBridge(Bridges.PlaylistFragment_To_ShowTrackActions)
+                                .pull(trackPath);
+                    }
                 });
 
-                mPlayPause.setOnClickListener((v) -> {
-                    Objects.requireNonNull(mPresenter);
-                    mPresenter.onPlayPause();
-                });
-
-                mNextTrack.setOnClickListener((v) -> {
-                    Objects.requireNonNull(mPresenter);
-                    mPresenter.onNextTrack();
-                });
-                if (mPresenter != null) {
-                    mPresenter.onMusicListAvailable(this);
-                }
+                mPreviousTrack.setOnClickListener((v) ->
+                        ReactiveArchitect.getBridge(Bridges.PreviousTrackClick_To_PlayTrack).pull());
+                mPlayPause.setOnClickListener((v) -> PlayerModel.switchPlayPause());
+                mNextTrack.setOnClickListener((v) ->
+                        ReactiveArchitect.getBridge(Bridges.NextTrackClick_To_PlayTrack).pull());
             });
             mTracksPathsLoader.forceLoad();
         }
-        return view;
+
+        super.onViewCreated(view, savedInstanceState);
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        updateThemeContext();
-        updateTheme();
+    protected void onInitializeBinders(List<StateKeeper.Binder> container) {
+        StateKeeper.Binder.Callback artistAlbumCallback = (view1, value) ->
+                showCurrentTrackInfo(MusicModel.getCurrentTrackArtist(), MusicModel.getCurrentTrackAlbum());
+        container.addAll(Arrays.asList(
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_NAME)
+                        .subscribe(mTitle, "setText", CharSequence.class).call(),
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_ARTIST)
+                        .subscribe(mInfo, "setText", CharSequence.class, artistAlbumCallback).call(),
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_ALBUM)
+                        .subscribe(mInfo, "setText", CharSequence.class, artistAlbumCallback).call(),
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_PATH)
+                        .subscribe((view12, value) ->
+                                mMusicListAdapter.setSelectedTrackPath((String) value)).call(),
+                ReactiveArchitect.getStateKeeper(MusicModel.IS_TRACK_PLAY)
+                        .subscribe(mPlayPauseCallback).call(),
+                ReactiveArchitect.getStateKeeper(Theme.COLOR_SET).subscribe((view, value) -> updateTheme()),
+                ReactiveArchitect.getStateKeeper(Theme.IS_DARK).subscribe((view, value) -> updateThemeContext()).call()
+        ));
     }
+
+    @Override
+    protected void onInitializeBridges(List<Bridge> container) {
+        container.addAll(Arrays.asList(
+                ReactiveArchitect.createStringBridge(Bridges.FindTrack_To_MusicListScrollToTrack)
+                        .connect(param -> scrollToTrack(mMusicListAdapter.indexOf(param)))
+        ));
+    }
+
+    private StateKeeper.Binder.Callback mPlayPauseCallback = (view1, value) ->
+            mPlayPause.setBackground(ThemeHelper.getDefaultRoundButtonDrawable(
+                    ((boolean) value) ? R.drawable.ic_pause : R.drawable.ic_play));
 
     @Override
     public void onDestroyView() {
@@ -128,35 +162,15 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
             mTracksPathsLoader = null;
         }
         unbinder.unbind();
-        mPresenter = null;
     }
 
-    private MusicListContract.Presenter mPresenter;
-
-    @Override
-    public void showCurrentTrack(MusicInfo musicInfo) {
-        mTitle.setText(musicInfo.getTitle());
-        String info = musicInfo.getArtist() + " | " + musicInfo.getAlbum();
+    public void showCurrentTrackInfo(String artist, String album) {
+        String info = (artist == null ? "" : (artist))
+                + (album != null && artist != null ? " | " : "")
+                + (album == null ? "" : album);
         mInfo.setText(info);
-        mMusicListAdapter.setSelectedTrackPath(musicInfo.getPath());
     }
 
-    @Override
-    public void clearCurrentMusic() {
-
-    }
-
-    @Override
-    public void startMusic() {
-        mPlayPause.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_pause));
-    }
-
-    @Override
-    public void pauseMusic() {
-        mPlayPause.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_play));
-    }
-
-    @Override
     public void updateTheme() {
         LinearLayoutManager llm = (LinearLayoutManager) mRecyclerView.getLayoutManager();
         if (llm != null && mRecyclerView.getAdapter() != null
@@ -168,9 +182,10 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
                 mMusicListAdapter.notifyItemChanged(index);
             }
         }
+        mPlayPause.setBackground(ThemeHelper.getDefaultRoundButtonDrawable(
+                MusicModel.isTrackPlay() ? R.drawable.ic_pause : R.drawable.ic_play));
     }
 
-    @Override
     public void updateThemeContext() {
         mEmpty.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
         mTitle.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
@@ -187,7 +202,8 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
             }
         }
         if (getView() != null) {
-            getView().findViewById(R.id.playerSmallDivider).setBackgroundColor(Theme.CONTEXT_LIGHT);
+            getView().findViewById(R.id.playerSmallDivider)
+                    .setBackgroundColor(ThemeHelper.setAlpha("42", Theme.CONTEXT_LIGHT));
         }
 
         mPreviousTrack.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_previous));
@@ -196,21 +212,23 @@ public class MusicListFragment extends Fragment implements MusicListContract.Fra
 
     @OnClick(R.id.playerSmallClicker)
     protected void scrollToCurrentTrack() {
-        mPresenter.onFindTrack(mMusicListAdapter.getSelectedTrackPath());
+        ReactiveArchitect.getBridge(Bridges.PlaylistClick_To_FindTrack).pull();
     }
 
     @OnLongClick(R.id.playerSmallClicker)
     protected void findCurrentTrackInPrimaryPlaylist() {
-        mPresenter.onFindTrackInPlaylist(null, mMusicListAdapter.getSelectedTrackPath());
+        ReactiveArchitect.getBridge(Bridges.PlaylistClick_To_FindTrackInMainPlaylist).pull();
     }
 
-    @Override
-    public void scrollToPosition(int index) {
+    public void scrollToTrack(int index) {
         mRecyclerView.smoothScrollToPosition(index);
     }
 
-    @Override
     public void bindLists(SelectMusicListAdapter adapter) {
         mMusicListAdapter.bind(adapter);
+    }
+
+    public void removeTrack(String path) {
+        mMusicListAdapter.removeItem(path);
     }
 }

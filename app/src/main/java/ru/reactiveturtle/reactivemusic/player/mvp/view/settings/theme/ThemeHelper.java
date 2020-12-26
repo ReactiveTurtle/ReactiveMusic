@@ -19,6 +19,7 @@ import android.graphics.drawable.shapes.Shape;
 import androidx.annotation.ColorInt;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat;
 
@@ -145,7 +146,7 @@ public class ThemeHelper {
     private static BitmapDrawable toBitmapDrawable(int vectorDrawableId, float scale, int color) {
         BitmapDrawable front = null;
         VectorDrawableCompat drawable = VectorDrawableCompat.create(RESOURCES, vectorDrawableId, null);
-        if (drawable != null) {
+        if (RESOURCES != null && drawable != null) {
             Bitmap bitmap = Helper.drawableToBitmap(drawable);
             Bitmap result = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(result);
@@ -167,9 +168,12 @@ public class ThemeHelper {
         return front;
     }
 
-    @NonNull
+    @Nullable
     public static Drawable getCheckDrawable(@DrawableRes int drawableIdFalse, @DrawableRes int drawableIdTrue,
                                             Class<? extends Drawable> c) {
+        if (RESOURCES == null) {
+            return null;
+        }
         Drawable back = ResourcesCompat.getDrawable(
                 RESOURCES, R.drawable.player_default_button, null);
         Drawable frontFalse = null;
@@ -209,8 +213,11 @@ public class ThemeHelper {
         return stateListDrawable;
     }
 
-    @NonNull
+    @Nullable
     public static Drawable getButtonDrawable(@ColorInt int backColor) {
+        if (RESOURCES == null) {
+            return null;
+        }
         GradientDrawable back = new GradientDrawable();
         back.setCornerRadius(RESOURCES.getDimensionPixelSize(R.dimen.big));
         back.setColor(backColor);

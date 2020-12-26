@@ -13,11 +13,9 @@
         android:fullBackupContent="@xml/backup_descriptor"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppThemeLight"
-        tools:targetApi="q">
+        android:theme="@style/AppThemeLight">
         <activity
             android:name=".player.mvp.view.PlayerActivity"
             android:windowSoftInputMode="stateVisible|adjustResize">

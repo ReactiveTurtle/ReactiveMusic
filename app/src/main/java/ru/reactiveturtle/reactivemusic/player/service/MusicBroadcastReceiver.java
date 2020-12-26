@@ -8,6 +8,9 @@ import androidx.annotation.NonNull;
 
 import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.player.GlobalModel;
+import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerModel;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.PlayerActivity;
+import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
 
 public class MusicBroadcastReceiver extends BroadcastReceiver {
     public static final int PLAY_PREVIOUS_TRACK = 0;
@@ -20,34 +23,32 @@ public class MusicBroadcastReceiver extends BroadcastReceiver {
 
     public static final int SHOW_ACTIVITY = 8;
 
-    private IMusicService.Presenter mPresenter;
-
-    public MusicBroadcastReceiver(@NonNull IMusicService.Presenter presenter) {
-        mPresenter = presenter;
-    }
-
     public boolean isActivityShowed = false;
+
     @Override
     public void onReceive(Context context, Intent intent) {
         int action = intent.getIntExtra(Helper.ACTION_EXTRA, -1);
         switch (action) {
             case PLAY_PAUSE_TRACK:
-                GlobalModel.setTrackPlay(!GlobalModel.isTrackPlay());
+                PlayerModel.switchPlayPause();
                 break;
             case PLAY_PREVIOUS_TRACK:
-                mPresenter.onPreviousTrack();
+                ReactiveArchitect.getBridge(Bridges.PreviousTrackClick_To_PlayTrack).pull();
                 break;
             case PLAY_NEXT_TRACK:
-                mPresenter.onNextTrack();
+                ReactiveArchitect.getBridge(Bridges.NextTrackClick_To_PlayTrack).pull();
                 break;
             case CLOSE_SERVICE:
-                mPresenter.onCloseService();
+                ReactiveArchitect.getBridge(Bridges.MusicBroadcast_To_CloseService).pull();
                 break;
             case SHOW_ACTIVITY:
                 if (!isActivityShowed) {
                     isActivityShowed = true;
-                    mPresenter.onShowActivity();
                 }
+                Intent activityIntent = new Intent(context, PlayerActivity.class);
+                activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                //activityIntent.putExtra(Helper.ACTION_EXTRA, MusicBroadcastReceiver.SHOW_ACTIVITY);
+                context.startActivity(activityIntent);
                 break;
         }
     }

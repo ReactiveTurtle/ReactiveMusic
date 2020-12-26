@@ -38,6 +38,10 @@ import android.widget.Toast;
 import com.google.android.gms.ads.MobileAds;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import butterknife.BindView;
@@ -45,25 +49,24 @@ import butterknife.ButterKnife;
 import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.Permissions;
 import ru.reactiveturtle.reactivemusic.R;
-import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
+import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerModel;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ColorSet;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
-import ru.reactiveturtle.reactivemusic.player.mvp.PlayerContract;
-import ru.reactiveturtle.reactivemusic.player.mvp.PlayerPresenter;
 import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerRepository;
-import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectMusicView;
-import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectorContract;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
+import ru.reactiveturtle.reactivemusic.player.service.Bridges;
 import ru.reactiveturtle.reactivemusic.player.service.MusicBroadcastReceiver;
+import ru.reactiveturtle.reactivemusic.player.service.MusicModel;
 import ru.reactiveturtle.reactivemusic.player.service.MusicService;
+import ru.reactiveturtle.tools.reactiveuvm.Bridge;
+import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
+import ru.reactiveturtle.tools.reactiveuvm.StateKeeper;
 import ru.reactiveturtle.tools.widget.text.TextDialog;
 import ru.reactiveturtle.tools.widget.selection.SelectionDialog;
 import ru.reactiveturtle.tools.widget.warning.MessageDialog;
 
-public class PlayerActivity extends AppCompatActivity implements PlayerContract.View {
-    private PlayerContract.Presenter mPresenter;
-    private SelectorContract.View mSelectMusicView;
-
+public class PlayerActivity extends AppCompatActivity {
     @BindView(R.id.toolbar)
     protected Toolbar mToolbar;
     @BindView(R.id.drawer_layout)
@@ -76,10 +79,21 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
     @BindView(R.id.playerBottomNavigationView)
     protected BottomNavigationView mBottomNavigationView;
 
+    private PlayerRepository mRepository;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //enableScreenMode();
+        mRepository = new PlayerRepository(this);
+        if (ReactiveArchitect.getBridge(Bridges.MusicService_To_Init) == null) {
+            Theme.init(getResources(), mRepository.getThemeColorSet(), mRepository.isThemeContextDark());
+            PlayerModel.initialize(mRepository);
+            ReactiveArchitect.createBridge(Bridges.MusicService_To_Init).connect(this::init);
+            startService(new Intent(this, MusicService.class));
+        } else {
+            init();
+        }
     }
 
     private void enableScreenshotMode() {
@@ -99,30 +113,76 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         });
 
         MusicInfo.initDefault(getResources());
-        PlayerRepository playerRepository = new PlayerRepository(this);
-        Theme.init(getResources(), playerRepository.getThemeColorSet(), playerRepository.isThemeContextDark());
-        if (GlobalModel.getCurrentTrack().getAlbumImage() == null) {
-            GlobalModel.getCurrentTrack().setAlbumImage(Theme.getDefaultAlbumCover());
-        }
 
         ButterKnife.bind(this);
 
         setSupportActionBar(mToolbar);
-        mToolbar.setNavigationOnClickListener(view -> mPresenter.onBackPressed());
+        mToolbar.setNavigationOnClickListener(view -> {
+            if (PlayerModel.getSelectedPage() == 1
+                    && PlayerModel.getOpenPlaylistName() != null) {
+                PlayerModel.setOpenPlaylistName(null);
+                PlayerModel.setPlaylists(mRepository.getPlaylists());
+                showTitle(R.string.playlists);
+                hideToolbarArrow();
+            } else {
+                super.onBackPressed();
+            }
+        });
 
-        PlayerPresenter playerPresenter = GlobalModel.PLAYER_PRESENTER == null ?
-                new PlayerPresenter(playerRepository) : GlobalModel.PLAYER_PRESENTER;
-        mPresenter = playerPresenter;
-        mPresenter.onRecreate();
-        GlobalModel.PLAYER_PRESENTER = playerPresenter;
-        playerPresenter.onView(this);
         initPlayerViewPager();
+
+        ReactiveArchitect.createStringBridge(Bridges.PlaylistAddClick_To_ShowCreateNameDialog).connect(() -> {
+            String openPlaylist = PlayerModel.getOpenPlaylistName();
+            if (openPlaylist != null) {
+                showMusicSelector(mRepository.getPlaylist(openPlaylist));
+            } else {
+                showCreateNameDialog();
+            }
+        });
+
+        ReactiveArchitect.createStringBridge(Bridges.PlaylistFragment_To_ShowTrackActions)
+                .connect(this::showTrackActions);
+
+        ReactiveArchitect.createStringBridge(Bridges.PlaylistOpen_To_ShowPlaylist)
+                .connect(param -> {
+                    PlayerModel.setOpenPlaylistName(param);
+                    PlayerModel.setOpenPlaylist(mRepository.getPlaylist(param));
+                    showTitle(R.string.playlists, " -> " + param);
+                    showToolbarArrow();
+                });
+
+        ReactiveArchitect.createBridge(Bridges.PlaylistClick_To_FindTrack)
+                .connect(() -> {
+                    goToCurrentTrack(mRepository.getCurrentPlaylist(), MusicModel.getCurrentTrackPath());
+                });
+
+        ReactiveArchitect.createBridge(Bridges.PlaylistClick_To_FindTrackInMainPlaylist)
+                .connect(() -> {
+                    goToCurrentTrack(null, MusicModel.getCurrentTrackPath());
+                });
+
+
+        ReactiveArchitect.getStateKeeper(PlayerModel.PLAYLIST_ACTIONS_PLAYLIST_NAME).subscribe((view, value) -> {
+            if (value != null) {
+                showPlaylistActions((String) value);
+            }
+        });
+
+        ReactiveArchitect.getStateKeeper(Theme.COLOR_SET).subscribe((view, value) ->
+                mRepository.setThemeColorSet((ColorSet) value));
+
+        PlayerModel.setPlaylists(mRepository.getPlaylists());
+
         initSelectMusicView();
+        showDrawer();
+        ReactiveArchitect.getStateKeeper(Theme.COLOR_SET).subscribe((view, value) -> {
+            updateTheme();
+        }).call();
+        ReactiveArchitect.getStateKeeper(Theme.IS_DARK).subscribe((view, value) -> updateThemeContext()).call();
+        ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_COVER).subscribe((view, value) -> updateWindowBackground());
     }
 
     private void initSelectMusicView() {
-        mSelectMusicView = new SelectMusicView(this);
-        mSelectMusicView.setPresenter(mPresenter);
         Helper.initSelectMusic(this, mDrawerLayout);
         updateThemeContext();
         updateTheme();
@@ -131,36 +191,18 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
     @Override
     protected void onResume() {
         super.onResume();
-        if (Permissions.hasExternalStorage(this)) {
-            if (mPresenter == null) {
-                init();
-            }
-            if (!GlobalModel.isServiceRunning()) {
-                startService(new Intent(this, MusicService.class));
-            }
-            GlobalModel.setActivityState(GlobalModel.ActivityState.RESUMED);
-            mSelectMusicView.onResume();
-        } else {
-            Permissions.requestExternalStorage(this);
-        }
+        PlayerModel.setActivityActive(true);
     }
 
     @Override
     protected void onPause() {
+        PlayerModel.setActivityActive(false);
         super.onPause();
-        if (Permissions.hasExternalStorage(this)) {
-            GlobalModel.setActivityState(GlobalModel.ActivityState.PAUSED);
-            mSelectMusicView.onPause();
-        }
     }
 
     @Override
     protected void onDestroy() {
-        GlobalModel.setActivityState(GlobalModel.ActivityState.STOPPED);
-        if (mPresenter != null) {
-            mPresenter.onStop();
-            mPresenter = null;
-        }
+        ReactiveArchitect.removeBridge(Bridges.PlaylistAddClick_To_ShowCreateNameDialog);
         super.onDestroy();
     }
 
@@ -169,7 +211,15 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         if (mDrawerLayout.isDrawerOpen(GravityCompat.END)) {
             mDrawerLayout.closeDrawer(GravityCompat.END);
         } else {
-            mPresenter.onBackPressed();
+            if (PlayerModel.getSelectedPage() == 1
+                    && PlayerModel.getOpenPlaylistName() != null) {
+                PlayerModel.setOpenPlaylistName(null);
+                PlayerModel.setPlaylists(mRepository.getPlaylists());
+                showTitle(R.string.playlists);
+                hideToolbarArrow();
+            } else {
+                super.onBackPressed();
+            }
         }
     }
 
@@ -196,7 +246,16 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
                         mBottomNavigationView.setSelectedItemId(R.id.playerBottomSettingsItem);
                         break;
                 }
-                mPresenter.onPageSelected(position);
+                PlayerModel.setSelectedPage(position);
+                if (position == 1) {
+                    if (PlayerModel.getOpenPlaylistName() != null) {
+                        showToolbarArrow();
+                    } else {
+                        hideToolbarArrow();
+                    }
+                } else {
+                    hideToolbarArrow();
+                }
             }
         });
         mBottomNavigationView.setOnNavigationItemSelectedListener(item -> {
@@ -217,7 +276,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
             return true;
         });
         if (getIntent().getIntExtra(Helper.ACTION_EXTRA, -1) == MusicBroadcastReceiver.SHOW_ACTIVITY) {
-            mPresenter.onScrollToCurrentTrackLater();
+            //goToCurrentTrack(mRepository.getCurrentPlaylist(), mRepository.getCurrentTrackPath());
         }
     }
 
@@ -234,12 +293,6 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         }
     }
 
-    @Override
-    public void pressBack() {
-        super.onBackPressed();
-    }
-
-    @Override
     public void showDrawer() {
         updateWindowBackground();
         DisplayMetrics dm = getResources().getDisplayMetrics();
@@ -269,38 +322,23 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         mDrawerLayout.startAnimation(animationSet);
     }
 
-    @Override
-    public void sendPlayPreviousTrack() {
-        sendIntent(MusicBroadcastReceiver.PLAY_PREVIOUS_TRACK);
-    }
-
-    @Override
-    public void sendPlayNextTrack() {
-        sendIntent(MusicBroadcastReceiver.PLAY_NEXT_TRACK);
-    }
-
-    @Override
-    public void unlockTrackProgress() {
-        mPlayerPagerAdapter.getPlayerFragment().unlockTrackProgress();
-    }
-
-    @Override
-    public void showPage(int position) {
-        mPlayerViewPager.setCurrentItem(position, true);
-    }
-
     private TextDialog mTextDialog;
 
     private TextDialog.Builder mCreateNameDialogBuilder;
 
-    @Override
     public void showCreateNameDialog() {
         mTextDialog = mCreateNameDialogBuilder.build();
         mTextDialog.setOnClickListener(new TextDialog.OnClickListener() {
             @Override
             public void onPositiveButtonClicked(String result) {
                 super.onPositiveButtonClicked(result);
-                mPresenter.onCreatePlaylist(result);
+                if (mRepository.addPlaylistName(result)) {
+                    hideNameDialog();
+                    ReactiveArchitect.getStringBridge(Bridges.PlaylistCreated_To_UpdateFragment)
+                            .pull(result);
+                } else {
+                    showToast(R.string.playlistExists);
+                }
             }
         });
         mTextDialog.show(getSupportFragmentManager(), "nameDialog");
@@ -308,7 +346,6 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
 
     private TextDialog.Builder mRenameDialogBuilder;
 
-    @Override
     public void showRenameDialog(String playlistName) {
         mRenameDialogBuilder.setText(playlistName);
         mTextDialog = mRenameDialogBuilder.build();
@@ -316,72 +353,122 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
             @Override
             public void onPositiveButtonClicked(String result) {
                 super.onPositiveButtonClicked(result);
-                mPresenter.onRenamePlaylist(playlistName, result);
+                if (mRepository.renamePlaylist(playlistName, result)) {
+                    if (PlayerModel.getOpenPlaylistName() == null) {
+                        ReactiveArchitect.getStringBridge(Bridges.RenameDialog_To_RenamePlaylistList).pull(result);
+                    }
+                    hideNameDialog();
+                } else {
+                    showToast(R.string.playlistExists);
+                }
             }
         });
         mTextDialog.show(getSupportFragmentManager(), "renameDialog");
     }
 
-    @Override
     public void hideNameDialog() {
         mTextDialog.dismiss();
     }
 
-    @Override
     public void bindMusicLists() {
-        mPlayerPagerAdapter.getListFragment().bindLists(mSelectMusicView.getSelectMusicList().getListAdapter());
+
     }
 
-    @Override
     public void showMusicSelector(List<String> playlist) {
         if (Permissions.hasSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             if (!mDrawerLayout.isDrawerOpen(GravityCompat.END)) {
                 mDrawerLayout.openDrawer(GravityCompat.END);
             }
-            mSelectMusicView.setSelectedItems(playlist);
         } else {
             Permissions.requestPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE, 1);
         }
     }
 
-    @Override
-    public void showSelectedTrack(@NonNull String path) {
-        mSelectMusicView.showSelectedItem(path);
-    }
-
-    @Override
-    public void hideSelectedTrack(@NonNull String path) {
-        mSelectMusicView.hideSelectedItem(path);
-    }
-
-    @Override
     public void showPlaylistActions(String playlistName) {
-        Spannable rename = new SpannableString(getResources().getString(R.string.rename));
+        Spannable rename = new SpannableString("•  " + getResources().getString(R.string.rename));
         rename.setSpan(new ForegroundColorSpan(Theme.CONTEXT_NEGATIVE_PRIMARY),
                 0, rename.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        Spannable remove = new SpannableString(getResources().getString(R.string.delete));
+        Spannable remove = new SpannableString("•  " + getResources().getString(R.string.delete));
         remove.setSpan(new ForegroundColorSpan(Color.RED),
                 0, remove.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         SelectionDialog selectionDialog = new SelectionDialog.Builder()
                 .setBackground(new ColorDrawable(
-                        Theme.IS_DARK ? Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY))
+                        Theme.isDark() ? Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY))
                 .setTitle(getResources().getString(R.string.choose_an_action))
                 .setDividerColor(ThemeHelper.setAlpha("8a", Theme.CONTEXT_LIGHT))
                 .setTitleColor(Theme.CONTEXT_NEGATIVE_PRIMARY)
                 .addItems(rename, remove)
                 .build();
         selectionDialog.setOnItemClickListener((position, result) -> {
-            mPresenter.onPlaylistActionSelected(playlistName, position);
             selectionDialog.dismiss();
+            switch (position) {
+                case 0:
+                    showRenameDialog(playlistName);
+                    break;
+                case 1:
+                    showWarningDialog(Arrays.asList(
+                            new Object[]{R.string.you_really_want, false},
+                            new Object[]{" ", false},
+                            new Object[]{R.string.delete, true},
+                            new Object[]{" ", false},
+                            new Object[]{R.string.playlist, true},
+                            new Object[]{" \"", false},
+                            new Object[]{playlistName, false},
+                            new Object[]{"\"", false},
+                            new Object[]{"?", false}
+                    ), playlistName, 0);
+                    break;
+            }
+        });
+        selectionDialog.show(getSupportFragmentManager(), "selectionDialog");
+    }
+
+    public void showTrackActions(String trackPath) {
+        Spannable rename = new SpannableString("•  " + getResources().getString(R.string.delete_from_playlist));
+        rename.setSpan(new ForegroundColorSpan(Color.parseColor("#FF0000")),
+                0, rename.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        Spannable remove = new SpannableString("•  " + getResources().getString(R.string.delete_from_storage));
+        remove.setSpan(new ForegroundColorSpan(Color.parseColor("#AA0000")),
+                0, remove.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        SelectionDialog selectionDialog = new SelectionDialog.Builder()
+                .setBackground(new ColorDrawable(
+                        Theme.isDark() ? Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY))
+                .setTitle(getResources().getString(R.string.choose_an_action))
+                .setDividerColor(ThemeHelper.setAlpha("8a", Theme.CONTEXT_LIGHT))
+                .setTitleColor(Theme.CONTEXT_NEGATIVE_PRIMARY)
+                .addItems(rename, remove)
+                .build();
+        selectionDialog.setOnItemClickListener((position, result) -> {
+            selectionDialog.dismiss();
+            List<Object[]> text = new ArrayList<>(Arrays.asList(
+                    new Object[]{R.string.you_really_want, false},
+                    new Object[]{" ", false},
+                    new Object[]{R.string.delete, true},
+                    new Object[]{" \"", false},
+                    new Object[]{trackPath, false},
+                    new Object[]{"\" ", false},
+                    new Object[]{"?", false}));
+            switch (position) {
+                case 0:
+                    text.add(text.size() - 1, new Object[]{R.string.from_playlist, true});
+                    showWarningDialog(text, trackPath, 1);
+                    break;
+                case 1:
+                    text.add(text.size() - 1, new Object[]{R.string.from_storage, true});
+                    showWarningDialog(text, trackPath, 2);
+                    break;
+            }
         });
         selectionDialog.show(getSupportFragmentManager(), "selectionDialog");
     }
 
     private MessageDialog.Builder mMessageDialogBuilder;
-    @Override
-    public void showWarningDialog(Object[][] stringBuilder, String parameter, int requestCode) {
+
+    public void showWarningDialog(List<Object[]> stringBuilder, String parameter, int requestCode) {
         StringBuilder builder = new StringBuilder();
         for (Object[] object : stringBuilder) {
             String string = "";
@@ -400,14 +487,55 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         messageDialog.setOnClickListener(new MessageDialog.OnClickListener() {
             @Override
             public void onPositiveButtonClicked() {
-                mPresenter.onWarningClickedPositive(parameter, requestCode);
                 messageDialog.dismiss();
+                switch (requestCode) {
+                    case 0:
+                        mRepository.removePlaylistName(parameter);
+                        if (mRepository.getCurrentPlaylist() != null
+                                && mRepository.getCurrentPlaylist().equals(parameter)) {
+                            mRepository.setCurrentPlaylist(null);
+                        }
+                        mPlayerPagerAdapter.getPlaylistFragment().removePlaylist(parameter);
+                        break;
+                    case 1:
+
+                        break;
+                    case 2:
+                        File file = new File(parameter);
+                        if (file.delete()) {
+                            mPlayerPagerAdapter.getListFragment().removeTrack(parameter);
+                        }
+                        break;
+                }
             }
         });
         messageDialog.show(getSupportFragmentManager(), "MessageDialog");
     }
 
-    @Override
+    public void goToCurrentTrack(String playlistName, String trackPath) {
+        List<String> playlist =
+                mRepository.getPlaylist(playlistName);
+        int index = playlist.indexOf(trackPath);
+        if (index > -1) {
+            if (playlistName != null) {
+                if (PlayerModel.getSelectedPage() != 1) {
+                    mPlayerViewPager.setCurrentItem(1);
+                }
+                if (PlayerModel.getOpenPlaylistName() == null) {
+                    ReactiveArchitect.getStringBridge(Bridges.PlaylistOpen_To_ShowPlaylist).pull(playlistName);
+                }
+                ReactiveArchitect.getStringBridge(Bridges.FindTrack_To_PlaylistScrollToTrack).pull(trackPath);
+            } else {
+                if (PlayerModel.getSelectedPage() != 2) {
+                    mPlayerViewPager.setCurrentItem(2);
+                }
+                ReactiveArchitect.getStringBridge(Bridges.FindTrack_To_MusicListScrollToTrack).pull(trackPath);
+            }
+        } else {
+            showToast(R.string.track_not_found);
+        }
+    }
+
     public void showToolbarArrow() {
         Drawable drawable = Helper.getNavigationIcon(getResources(), R.drawable.ic_arrow_upward, -90);
         if (!Theme.isVeryBright(Theme.getColorSet().getPrimary())) {
@@ -416,47 +544,43 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         mToolbar.setNavigationIcon(drawable);
     }
 
-    @Override
     public void hideToolbarArrow() {
         mToolbar.setNavigationIcon(null);
     }
 
-    @Override
     public void showTitle(int stringId) {
         showTitle(getString(stringId));
     }
 
-    @Override
     public void showTitle(int stringId, String string) {
         showTitle(getString(stringId) + string);
     }
 
-    @Override
     public void showTitle(String name) {
         mPlayerPagerAdapter.setTitle(mPlayerViewPager.getCurrentItem(), name);
         mToolbar.setTitle(name);
     }
 
-    @Override
     public void showToast(int string) {
         Toast.makeText(getApplicationContext(), string, Toast.LENGTH_SHORT).show();
     }
 
-    @Override
     public void updateWindowBackground() {
-        if (!GlobalModel.isFirstTrackLoad()) {
+        if (!Theme.getDefaultAlbumCover().getBitmap().equals(
+                MusicModel.getCurrentTrackCover().getBitmap())) {
             Bitmap bitmap;
             Canvas canvas;
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            if (GlobalModel.getCurrentTrack().getAlbumImage().getBitmap().equals(
-                    Theme.getDefaultAlbumCover().getBitmap())) {
+            if (MusicModel.getCurrentTrackCover() == null ||
+                    MusicModel.getCurrentTrackCover().getBitmap().equals(
+                            Theme.getDefaultAlbumCover().getBitmap())) {
                 bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
                 canvas = new Canvas(bitmap);
                 paint.setShader(new RadialGradient(0, 0, 512,
                         new int[]{
                                 Theme.getColorSet().getPrimaryDark(),
                                 Theme.getColorSet().getPrimaryDark(),
-                                Theme.IS_DARK ?
+                                Theme.isDark() ?
                                         Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY
                         },
                         new float[]{
@@ -475,7 +599,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
                 canvas.drawRect(0, 0, bitmap.getWidth(), bitmap.getHeight(), paint);
                 paint.setShader(null);
             } else {
-                bitmap = GlobalModel.getCurrentTrack().getAlbumImage().getBitmap()
+                bitmap = MusicModel.getCurrentTrackCover().getBitmap()
                         .copy(Bitmap.Config.ARGB_8888, true);
             }
             DisplayMetrics dm = getResources().getDisplayMetrics();
@@ -492,20 +616,18 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
             canvas = new Canvas(back);
             canvas.drawBitmap(bitmap, (back.getWidth() - bitmap.getWidth()) / 2f,
                     (back.getHeight() - bitmap.getHeight()) / 2f, paint);
-            int color = ThemeHelper.setAlpha("6a", Theme.IS_DARK ?
+            int color = ThemeHelper.setAlpha("6a", Theme.isDark() ?
                     Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY);
             paint.setColor(color);
             canvas.drawRect(0, 0, back.getWidth(), back.getHeight(), paint);
             mDrawerLayout.setBackground(new BitmapDrawable(getResources(),
                     Helper.fastblur(back, 1, 32)));
         } else {
-            mDrawerLayout.setBackground(new ColorDrawable(Theme.IS_DARK ?
+            mDrawerLayout.setBackground(new ColorDrawable(Theme.isDark() ?
                     Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY));
         }
-        mSelectMusicView.updateBackground(mDrawerLayout.getBackground());
     }
 
-    @Override
     public void updateTheme() {
         updateWindowBackground();
         mToolbar.setBackgroundColor(Theme.getColorSet().getPrimary());
@@ -519,17 +641,18 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
         }
         updateBottomNavigationView();
         updateDialogs();
-        mSelectMusicView.updateTheme();
     }
 
-    @Override
     public void updateThemeContext() {
         updateWindowBackground();
-        mBottomNavigationView.setBackgroundColor(Theme.IS_DARK ?
+        mBottomNavigationView.setBackgroundColor(Theme.isDark() ?
                 Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setNavigationBarColor(Theme.isDark() ?
+                    Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY);
+        }
         updateBottomNavigationView();
         updateDialogs();
-        mSelectMusicView.updateThemeContext();
     }
 
     private void updateDialogs() {
@@ -563,7 +686,7 @@ public class PlayerActivity extends AppCompatActivity implements PlayerContract.
                 new int[]{android.R.attr.state_checked},
                 new int[]{-android.R.attr.state_checked}
         }, new int[]{Theme.isGrey(Theme.getColorSet().getPrimary()) ?
-                Theme.CONTEXT_NEGATIVE_PRIMARY : (Theme.IS_DARK ?
+                Theme.CONTEXT_NEGATIVE_PRIMARY : (Theme.isDark() ?
                 Theme.getColorSet().getPrimaryLight() : Theme.getColorSet().getPrimary()),
                 Color.argb(Integer.parseInt("99", 16),
                         Color.red(Theme.CONTEXT_NEGATIVE_PRIMARY),

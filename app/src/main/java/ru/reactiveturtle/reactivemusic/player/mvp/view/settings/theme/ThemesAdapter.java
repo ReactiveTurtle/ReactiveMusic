@@ -22,10 +22,14 @@ import ru.reactiveturtle.reactivemusic.R;
 public class ThemesAdapter extends RecyclerView.Adapter<ThemesAdapter.ThemeViewHolder> {
     private List<ColorSet> mColorSets = new ArrayList<>();
     private int size;
-    private int ITEMS_COUNT_IN_LINE = 3;
+    private int ITEMS_COUNT_IN_LINE;
 
     public ThemesAdapter() {
-
+        if (Resources.getSystem().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            ITEMS_COUNT_IN_LINE = 6;
+        } else {
+            ITEMS_COUNT_IN_LINE = 3;
+        }
     }
 
     @NonNull
@@ -37,11 +41,7 @@ public class ThemesAdapter extends RecyclerView.Adapter<ThemesAdapter.ThemeViewH
 
     @Override
     public void onBindViewHolder(@NonNull ThemeViewHolder holder, int position) {
-        if (Resources.getSystem().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            ITEMS_COUNT_IN_LINE = 6;
-        } else {
-            ITEMS_COUNT_IN_LINE = 3;
-        }
+        System.out.println("bind: " + position + ", count: " + getItemCount());
         size = Resources.getSystem().getDisplayMetrics().widthPixels
                 / ITEMS_COUNT_IN_LINE;
         int index = position * ITEMS_COUNT_IN_LINE;
@@ -61,9 +61,9 @@ public class ThemesAdapter extends RecyclerView.Adapter<ThemesAdapter.ThemeViewH
                 / ITEMS_COUNT_IN_LINE);
     }
 
-    public void setColorSets(@NonNull List<ColorSet> set) {
+    public void setColorSets(@NonNull List<ColorSet> colorSetList) {
         mColorSets.clear();
-        mColorSets.addAll(set);
+        mColorSets.addAll(colorSetList);
         notifyDataSetChanged();
     }
 
@@ -96,10 +96,12 @@ public class ThemesAdapter extends RecyclerView.Adapter<ThemesAdapter.ThemeViewH
 
         private void showColorSet(int index, ConstraintLayout item) {
             if (item != null) {
+                System.out.println(index);
                 View colorSetView = item.findViewById(R.id.themeColorSet);
                 Drawable background = null;
-                if (index < mColorSets.size()) {
+                if (index > -1 && index < mColorSets.size()) {
                     ColorSet colorSet = mColorSets.get(index);
+                    System.out.println(colorSet.toString());
                     background = ThemeHelper.getColorSetDrawable(colorSet);
 
                     Objects.requireNonNull(onItemClickListener);

@@ -22,8 +22,12 @@ import com.google.android.gms.ads.AdListener;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdSize;
 import com.google.android.gms.ads.AdView;
-import com.google.android.gms.ads.LoadAdError;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -33,8 +37,12 @@ import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ColorPalette;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemesAdapter;
+import ru.reactiveturtle.tools.reactiveuvm.Bridge;
+import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
+import ru.reactiveturtle.tools.reactiveuvm.StateKeeper;
+import ru.reactiveturtle.tools.reactiveuvm.fragment.ArchitectFragment;
 
-public class SettingsFragment extends androidx.fragment.app.Fragment implements SettingsContract.Fragment {
+public class SettingsFragment extends ArchitectFragment {
     private Unbinder unbinder;
     @BindView(R.id.settingsMenu)
     protected RecyclerView mSettingsMenu;
@@ -56,60 +64,34 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mPresenter = GlobalModel.PLAYER_PRESENTER;
     }
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.settings_fragment, container, false);
-        unbinder = ButterKnife.bind(this, view);
-        initSettings();
-
-        mThemeContextSwitch = view.findViewById(R.id.themeContextSwitch);
-        mThemeContextSwitch.setOnClickListener(view1 -> {
-            Theme.updateContext(!Theme.IS_DARK);
-            mPresenter.onUpdateContextTheme();
-        });
-        mThemesRecyclerView = mThemesRoot.findViewById(R.id.themesRecyclerView);
-        mThemesRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        mThemesAdapter = new ThemesAdapter();
-        mThemesRecyclerView.setAdapter(mThemesAdapter);
-        mThemeName.setText(ColorPalette.getNames()[mThemeBrightness.getProgress()]);
-        mThemesAdapter.setColorSets(Theme.getColors(mThemeBrightness.getProgress()));
-        mThemesAdapter.setOnItemClickListener(colorSet -> {
-            Theme.update(colorSet, GlobalModel.getTrackProgress());
-            mPresenter.onUpdateTheme();
-        });
-        if (mPresenter != null) {
-            mPresenter.onSettingsFragmentAvailable(this);
-        }
-        mThemeBrightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-                mThemesAdapter.setColorSets(Theme.getColors(i));
-                mThemeName.setText(ColorPalette.getNames()[i]);
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-
-            }
-        });
-        updateThemeContext();
-        updateTheme();
-        return view;
+        return inflater.inflate(R.layout.settings_fragment, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        unbinder = ButterKnife.bind(this, view);
+        initSettings();
+        initTheme();
         initAd();
+    }
+
+    @Override
+    protected void onInitializeBinders(List<StateKeeper.Binder> container) {
+        container.addAll(Arrays.asList(
+                ReactiveArchitect.getStateKeeper(Theme.COLOR_SET).subscribe((view, value) -> updateTheme()).call(),
+                ReactiveArchitect.getStateKeeper(Theme.IS_DARK).subscribe((view, value) -> updateThemeContext()).call()
+        ));
+    }
+
+    @Override
+    protected void onInitializeBridges(List<Bridge> container) {
+
     }
 
     private void initAd() {
@@ -130,15 +112,8 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
             mAdView.getLayoutParams().width = adSize.getWidthInPixels(getContext());
             mAdView.getLayoutParams().height = adSize.getHeightInPixels(getContext());
             mAdView.setAdSize(adSize);
-            mAdView.setAdListener(new AdListener(){
+            mAdView.setAdListener(new AdListener() {
                 private boolean isFirstLoad = true;
-
-                @Override
-                public void onAdFailedToLoad(LoadAdError loadAdError) {
-                    super.onAdFailedToLoad(loadAdError);
-                    System.out.println("Ad load failed");
-                    loadAd();
-                }
 
                 @Override
                 public void onAdLoaded() {
@@ -147,16 +122,11 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
                     if (isFirstLoad) {
                         ConstraintSet constraintSet = new ConstraintSet();
                         constraintSet.clone(contentRoot);
-                        constraintSet.connect(R.id.settingsThemesFragment, ConstraintSet.TOP,
+                        constraintSet.connect(R.id.settingsSections, ConstraintSet.TOP,
                                 mAdView.getId(), ConstraintSet.BOTTOM);
                         constraintSet.applyTo(contentRoot);
                         isFirstLoad = false;
                     }
-                }
-
-                @Override
-                public void onAdClosed() {
-                    super.onAdClosed();
                 }
             });
             loadAd();
@@ -168,6 +138,7 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
         AdRequest adRequest =
                 new AdRequest.Builder()
                         .addTestDevice("FFA965BABCDD7ADE92691337BB3BA99D")
+                        .addTestDevice("15CA2294E6C8A0A64A5F0E7D3A8ECA8C") // MEMU Emulator
                         .build();
         mAdView.loadAd(adRequest);
     }
@@ -189,28 +160,22 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
         unbinder.unbind();
     }
 
-    private SettingsContract.Presenter mPresenter;
-
-    @Override
     public void updateTheme() {
         Theme.updateSeekBar(mThemeBrightness);
         Theme.updateFab(mThemeContextSwitch);
     }
 
-    @Override
     public void updateThemeContext() {
         mThemeName.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
-        mThemeContextSwitch.setImageResource(Theme.IS_DARK ?
+        mThemeContextSwitch.setImageResource(Theme.isDark() ?
                 R.drawable.ic_sun : R.drawable.ic_moon);
         Theme.updateSeekBar(mThemeBrightness);
         Theme.updateFab(mThemeContextSwitch);
         mThemesAdapter.notifyDataSetChanged();
+        mSettingsAdapter.notifyDataSetChanged();
     }
 
     private void initSettings() {
-        mSettingsMenu.setVisibility(View.GONE);
-        mThemesRoot.setVisibility(View.VISIBLE);
-
         mSettingsAdapter = new SettingsAdapter();
         mSettingsMenu.setLayoutManager(new LinearLayoutManager(getContext()));
         mSettingsMenu.setAdapter(mSettingsAdapter);
@@ -219,30 +184,77 @@ public class SettingsFragment extends androidx.fragment.app.Fragment implements 
             mSettingsMenu.setVisibility(View.GONE);
             switch (index) {
                 case 0:
-                    mThemesRoot.setVisibility(View.VISIBLE);
                     break;
                 case 1:
+                    mThemesRoot.setVisibility(View.VISIBLE);
                     break;
             }
         });
         if (getActivity() != null) {
-            SettingsItem themeItem = new SettingsItem(ResourcesCompat.getDrawable(getResources(),
-                    R.drawable.ic_style, getActivity().getTheme()),
-                    getResources().getString(R.string.themes));
-            themeItem.getIcon().setColorFilter(new LightingColorFilter(Color.BLACK,
-                    ResourcesCompat.getColor(getResources(), android.R.color.holo_red_light, getActivity().getTheme())));
-            mSettingsAdapter.addItem(themeItem);
-
             SettingsItem equalizerItem = new SettingsItem(ResourcesCompat.getDrawable(getResources(),
                     R.drawable.ic_equalizer, getActivity().getTheme()),
                     getResources().getString(R.string.equalizer));
             equalizerItem.getIcon().setColorFilter(new LightingColorFilter(Color.BLACK,
                     ResourcesCompat.getColor(getResources(), android.R.color.holo_orange_light, getActivity().getTheme())));
             mSettingsAdapter.addItem(equalizerItem);
+
+            SettingsItem themeItem = new SettingsItem(ResourcesCompat.getDrawable(getResources(),
+                    R.drawable.ic_style, getActivity().getTheme()),
+                    getResources().getString(R.string.themes));
+            themeItem.getIcon().setColorFilter(new LightingColorFilter(Color.BLACK,
+                    ResourcesCompat.getColor(getResources(), android.R.color.holo_red_light, getActivity().getTheme())));
+            mSettingsAdapter.addItem(themeItem);
         }
     }
 
-    @Override
-    public void showSettings() {
+    private void initTheme() {
+        mThemeContextSwitch.setOnClickListener(view1 -> {
+            Theme.switchThemeContext();
+        });
+        mThemesRecyclerView = mThemesRoot.findViewById(R.id.themesRecyclerView);
+        mThemesRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        mThemesAdapter = new ThemesAdapter();
+        mThemesRecyclerView.setAdapter(mThemesAdapter);
+        mThemeName.setText(ColorPalette.getNames()[mThemeBrightness.getProgress()]);
+        mThemesAdapter.setColorSets(Theme.getColors(mThemeBrightness.getProgress()));
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mThemesAdapter.notifyDataSetChanged();
+                    }
+                });
+            }
+        }, 3000);
+
+        mThemesAdapter.setOnItemClickListener(Theme::setColorSet);
+        mThemeBrightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+                mThemesAdapter.setColorSets(Theme.getColors(i));
+                mThemeName.setText(ColorPalette.getNames()[i]);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+    }
+
+    public boolean pressBack() {
+        mThemesRoot.setVisibility(View.GONE);
+        if (mSettingsMenu.getVisibility() == View.GONE) {
+            mSettingsMenu.setVisibility(View.VISIBLE);
+            return true;
+        }
+        return false;
     }
 }

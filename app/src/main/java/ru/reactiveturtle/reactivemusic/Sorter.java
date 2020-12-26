@@ -12,7 +12,7 @@ public class Sorter {
             if (name1.equals(name2))
                 return 0;
 
-            int length = name1.length() > name2.length() ? name2.length() : name1.length();
+            int length = Math.min(name1.length(), name2.length());
             for (int i = 0; i < length; i++) {
                 if (name1.charAt(i) != name2.charAt(i))
                     return name1.charAt(i) - name2.charAt(i);

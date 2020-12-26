@@ -18,6 +18,7 @@ import butterknife.OnClick;
 import butterknife.OnLongClick;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 
 public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.PlaylistHolder> {
     private List<String> playlists = new ArrayList<>();
@@ -33,7 +34,7 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.Playli
     public void onBindViewHolder(@NonNull PlaylistHolder holder, int position) {
         holder.name.setText(playlists.get(position));
         holder.name.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
-        holder.bottomDivider.setBackgroundColor(Theme.CONTEXT_LIGHT);
+        holder.bottomDivider.setBackgroundColor(ThemeHelper.setAlpha("42", Theme.CONTEXT_LIGHT));
     }
 
     @Override

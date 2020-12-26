@@ -96,6 +96,9 @@ public abstract class Loaders {
                         getArtUriFromMusicFile(getContext(), trackPath), 256);
             } catch (FileNotFoundException e) {
                 try {
+                    if (!new File(trackPath).exists()) {
+                        return null;
+                    }
                     MediaMetadataRetriever mmr = new MediaMetadataRetriever();
                     mmr.setDataSource(trackPath);
                     byte[] data = mmr.getEmbeddedPicture();
@@ -174,6 +177,9 @@ public abstract class Loaders {
             int titleColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);
 
             String path = cursor.getString(pathColumnIndex);
+            if (!new File(path).exists()) {
+                return null;
+            }
             MediaMetadataRetriever mmr = new MediaMetadataRetriever();
             mmr.setDataSource(path);
             int trackDuration = 0;
@@ -194,6 +200,9 @@ public abstract class Loaders {
         @Nullable
         public static MusicInfo getMusicInfo(String filePath) {
             try {
+                if (!new File(filePath).exists()) {
+                    return null;
+                }
                 MediaMetadataRetriever mmr = new MediaMetadataRetriever();
                 mmr.setDataSource(filePath);
                 String mimeType = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE);

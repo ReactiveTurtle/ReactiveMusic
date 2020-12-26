@@ -21,13 +21,14 @@ import java.util.Objects;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import butterknife.OnLongClick;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.music.MusicFragment;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectMusicListAdapter;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
-import ru.reactiveturtle.tools.BaseAsyncTask;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 
 public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.MusicViewHolder> {
     protected List<MusicInfo> mMusicList = new ArrayList<>();
@@ -176,6 +177,12 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
             onItemClickListener.onClick(mMusicList.get(getLayoutPosition()));
         }
 
+        @OnLongClick(R.id.player_music_list_item_clicker)
+        protected void itemLongClick() {
+            Objects.requireNonNull(onItemClickListener);
+            onItemClickListener.onLongClick(mMusicList.get(getLayoutPosition()).getPath());
+        }
+
         private void showInfo(MusicInfo track) {
             Drawable background = track.getPath().equals(mPath) ?
                     Theme.getProgressDrawable() :
@@ -196,7 +203,7 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
                 title.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
                 info.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
             }
-            bottomDivider.setBackgroundColor(Theme.CONTEXT_LIGHT);
+            bottomDivider.setBackgroundColor(ThemeHelper.setAlpha("42", Theme.CONTEXT_LIGHT));
         }
 
         public void showCover(BitmapDrawable cover) {
@@ -205,7 +212,7 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
         }
 
         private void showGray() {
-            int color = Theme.IS_DARK ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY_LIGHT;
+            int color = Theme.isDark() ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY_LIGHT;
             albumImage.setBackground(new ColorDrawable(color));
             title.setText(" ");
             title.setBackground(new ColorDrawable(color));
@@ -240,5 +247,7 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.Musi
 
     public interface OnItemClickListener {
         void onClick(MusicInfo musicInfo);
+
+        void onLongClick(String trackPath);
     }
 }

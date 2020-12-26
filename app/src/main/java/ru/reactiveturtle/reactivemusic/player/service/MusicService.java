@@ -7,22 +7,22 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.IBinder;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
-import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -32,15 +32,18 @@ import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
+import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerModel;
 import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerRepository;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.PlayerActivity;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
-import ru.reactiveturtle.tools.BaseAsyncTask;
+import ru.reactiveturtle.tools.reactiveuvm.Bridge;
+import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
+import ru.reactiveturtle.tools.reactiveuvm.StateKeeper;
+import ru.reactiveturtle.tools.reactiveuvm.service.ArchitectService;
 
 import static ru.reactiveturtle.reactivemusic.Helper.getArtUriFromMusicFile;
 
-public class MusicService extends Service implements IMusicService.View {
-    private IMusicService.Presenter mPresenter;
+public class MusicService extends ArchitectService {
     private MusicBroadcastReceiver mPlayerReceiver;
     private HeadphoneMuteReceiver mHeadphoneMuteReceiver;
     private HeadphoneClickReceiver mHeadphoneClickReceiver;
@@ -49,29 +52,33 @@ public class MusicService extends Service implements IMusicService.View {
 
     private NotificationManager mNotificationManager;
 
+    private PlayerManager playerManager;
+
     @Override
     public void onCreate() {
+        MusicModel.initialize();
         super.onCreate();
-        GlobalModel.setServiceRunning(true);
+
+        PlayerRepository repository = new PlayerRepository(this);
+
         mAudioFocusListener = new AudioFocusListener(mMusicPlayer, "player");
         mMusicPlayer = new MediaPlayer();
         mMusicPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
 
         mNotificationManager = (NotificationManager) getApplicationContext().getSystemService(NOTIFICATION_SERVICE);
 
-        PlayerRepository playerRepository = new PlayerRepository(this);
-        if (playerRepository.getCurrentMusic() == null) {
+        playerManager = new PlayerManager(repository);
+        if (repository.getCurrentTrackPath() == null) {
             List<String> paths = Helper.getAllTracksPathsInfo(this);
             if (paths.size() > 0) {
-                playerRepository.setCurrentMusic(new MusicInfo(paths.get(0)));
+                repository.setCurrentTrackPath(paths.get(0));
             }
         }
-        mPresenter = new MusicPresener(this, playerRepository);
 
-        mPlayerReceiver = new MusicBroadcastReceiver(mPresenter);
+        mPlayerReceiver = new MusicBroadcastReceiver();
         registerReceiver(mPlayerReceiver, new IntentFilter(getClass().getName()));
 
-        mHeadphoneMuteReceiver = new HeadphoneMuteReceiver(mPresenter);
+        mHeadphoneMuteReceiver = new HeadphoneMuteReceiver();
         registerReceiver(mHeadphoneMuteReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
 
         mHeadphoneClickReceiver = new HeadphoneClickReceiver();
@@ -79,15 +86,82 @@ public class MusicService extends Service implements IMusicService.View {
         initNotification();
 
         mMusicPlayer.setOnPreparedListener(mediaPlayer -> {
-            updateTrackProgress(mediaPlayer.getCurrentPosition());
-            mPresenter.onPlayerPrepared(true, mMusicPlayer.getDuration());
+            MusicModel.setCurrentTrackProgress(mMusicPlayer.getCurrentPosition());
+            MusicModel.setCurrentTrackDuration(mMusicPlayer.getDuration());
             mMusicPlayer.setOnPreparedListener(mediaPlayer1 -> {
-                mPresenter.onPlayerPrepared(false, mMusicPlayer.getDuration());
+                startMusic();
+                MusicModel.setCurrentTrackDuration(mMusicPlayer.getDuration());
             });
         });
         mMusicPlayer.setOnCompletionListener(mediaPlayer -> {
-            mPresenter.onTrackComplete();
+            if (!PlayerModel.isTrackLooping()) {
+                MusicModel.setCurrentTrackProgress(mMusicPlayer.getCurrentPosition());
+                MusicModel.setCurrentTrackPath(playerManager.getNextTrack());
+            }
         });
+
+        Theme.init(getResources(), repository.getThemeColorSet(), repository.isThemeContextDark());
+
+        MusicModel.setCurrentTrackPath(playerManager.getLastTrackPath());
+        Helper.goToMainLooper(() -> ReactiveArchitect.getBridge(Bridges.MusicService_To_Init).pull());
+    }
+
+    @Override
+    protected void onInitializeBinders(List<StateKeeper.Binder> container) {
+        container.addAll(Arrays.asList(
+                ReactiveArchitect.getStateKeeper(PlayerModel.IS_ACTIVITY_ACTIVE).subscribe((view, value) -> {
+                    boolean isActive = (boolean) value;
+                    if (!isActive) {
+                        stopTimer();
+                        showPlayer(new MusicInfo(MusicModel.getCurrentTrackPath(),
+                                MusicModel.getCurrentTrackAlbum(),
+                                MusicModel.getCurrentTrackArtist(),
+                                MusicModel.getCurrentTrackName(),
+                                MusicModel.getCurrentTrackDuration()));
+                    } else {
+                        startTimer();
+                        hidePlayer();
+                    }
+                }).call(),
+                ReactiveArchitect.getStateKeeper(PlayerModel.SEEKBAR_TRACK_PROGRESS).subscribe((view, value) -> {
+                    mMusicPlayer.seekTo((Integer) value);
+                }),
+                ReactiveArchitect.getStateKeeper(PlayerModel.IS_PLAY_RANDOM_TRACK).subscribe((view, value) -> {
+                    playerManager.rememberPlayRandomTrack((Boolean) value);
+                }),
+                ReactiveArchitect.getStateKeeper(PlayerModel.IS_TRACK_LOOPING).subscribe((view, value) -> {
+                    mMusicPlayer.setLooping((Boolean) value);
+                    playerManager.rememberLooping((Boolean) value);
+                }).call(),
+                ReactiveArchitect.getStateKeeper(PlayerModel.IS_PLAY).subscribe((view, value) -> {
+                    if ((boolean) value) {
+                        startMusic();
+                    } else {
+                        pauseMusic();
+                    }
+                }),
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_PATH).subscribe((view, value) -> {
+                    playTrack((String) value);
+                }),
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_ALBUM).subscribe((view, value) ->
+                        showPlayer(MusicModel.getMusicInfo())
+                ),
+                ReactiveArchitect.getStateKeeper(MusicModel.IS_TRACK_PLAY).subscribe((view, value) ->
+                        showPlayer(MusicModel.getMusicInfo()))
+        ));
+    }
+
+    @Override
+    protected void onInitializeBridges(List<Bridge> container) {
+        container.addAll(Arrays.asList(
+                ReactiveArchitect.createBridge(Bridges.PreviousTrackClick_To_PlayTrack).connect(() -> {
+                    MusicModel.setCurrentTrackPath(playerManager.getPreviousTrack());
+                }),
+                ReactiveArchitect.createBridge(Bridges.NextTrackClick_To_PlayTrack).connect(() -> {
+                    MusicModel.setCurrentTrackPath(playerManager.getNextTrack());
+                }),
+                ReactiveArchitect.createBridge(Bridges.MusicBroadcast_To_CloseService).connect(this::closeService)
+        ));
     }
 
     private Intent mServiceIntent;
@@ -120,16 +194,12 @@ public class MusicService extends Service implements IMusicService.View {
             String event = "";
             switch (focusChange) {
                 case AudioManager.AUDIOFOCUS_LOSS:
-                    if (GlobalModel.isTrackPlay()) {
-                        mPresenter.onPlayPause();
-                    }
+                    ReactiveArchitect.changeState("IS_TRACK_PLAY", false);
                     event = "AUDIOFOCUS_LOSS";
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                     event = "AUDIOFOCUS_LOSS_TRANSIENT";
-                    if (mMusicPlayer.isPlaying()) {
-                        mMusicPlayer.pause();
-                    }
+                    ReactiveArchitect.changeState("IS_TRACK_PLAY", false);
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                     event = "AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK";
@@ -138,9 +208,7 @@ public class MusicService extends Service implements IMusicService.View {
                 case AudioManager.AUDIOFOCUS_GAIN:
                     event = "AUDIOFOCUS_GAIN";
                     mMusicPlayer.setVolume(1f, 1f);
-                    if (GlobalModel.isTrackPlay()) {
-                        mMusicPlayer.start();
-                    }
+                    ReactiveArchitect.changeState("IS_TRACK_PLAY", true);
                     break;
             }
             System.out.println(label + " onAudioFocusChange: " + event);
@@ -155,31 +223,13 @@ public class MusicService extends Service implements IMusicService.View {
 
     @Override
     public void onDestroy() {
-        GlobalModel.setServiceRunning(false);
         super.onDestroy();
     }
 
-    @Override
-    public void showCurrentTrack(MusicInfo musicInfo) {
-        try {
-            if (musicInfo != null) {
-                stopTimer();
-                mMusicPlayer.reset();
-                mMusicPlayer.setDataSource(musicInfo.getPath());
-                mMusicPlayer.prepareAsync();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void clearCurrentMusic() {
-
-    }
-
-    @Override
     public void showPlayer(MusicInfo currentMusic) {
+        if (PlayerModel.isActivityActive()) {
+            return;
+        }
         RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.player_music_notification_fragment);
 
         BitmapDrawable bitmapDrawable;
@@ -195,8 +245,8 @@ public class MusicService extends Service implements IMusicService.View {
         remoteViews.setTextViewText(R.id.playerNotificationTitle, currentMusic.getTitle());
         remoteViews.setTextViewText(R.id.playerNotificationInfo,
                 currentMusic.getArtist() + " | " + currentMusic.getAlbum());
-        remoteViews.setInt(R.id.playerNotificationPlayPause, "setBackground",
-                mMusicPlayer.isPlaying() ? R.drawable.pause_button :
+        remoteViews.setInt(R.id.playerNotificationPlayPause, "setBackgroundResource",
+                MusicModel.isTrackPlay() ? R.drawable.pause_button :
                         R.drawable.play_button);
 
         Intent intent = new Intent(getClass().getName());
@@ -232,7 +282,6 @@ public class MusicService extends Service implements IMusicService.View {
         startForeground(17253, mServiceNotificationBuilder.build());
     }
 
-    @Override
     public void hidePlayer() {
         stopForeground(true);
         mPlayerReceiver.isActivityShowed = false;
@@ -241,15 +290,14 @@ public class MusicService extends Service implements IMusicService.View {
     private Timer mProgressUpdater;
     private AudioFocusListener mAudioFocusListener;
 
-    @Override
     public void startMusic() {
+        MusicModel.setTrackPlay(true);
         mMusicPlayer.start();
         mAudioManager.requestAudioFocus(mAudioFocusListener,
                 AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
         startTimer();
     }
 
-    @Override
     public void startTimer() {
         if (mProgressUpdater != null) {
             mProgressUpdater.cancel();
@@ -261,31 +309,20 @@ public class MusicService extends Service implements IMusicService.View {
                 new Thread() {
                     @Override
                     public void run() {
-                        sendUpdateTrackProgress(mMusicPlayer.getCurrentPosition(), false);
+                        MusicModel.setCurrentTrackProgress(mMusicPlayer.getCurrentPosition());
                     }
                 }.start();
             }
         }, 0, 250);
     }
 
-    @Override
     public void pauseMusic() {
+        MusicModel.setTrackPlay(false);
         mMusicPlayer.pause();
         mAudioManager.abandonAudioFocus(mAudioFocusListener);
         stopTimer();
     }
 
-    @Override
-    public void updateTheme() {
-
-    }
-
-    @Override
-    public void updateThemeContext() {
-
-    }
-
-    @Override
     public void stopTimer() {
         if (mProgressUpdater != null) {
             mProgressUpdater.cancel();
@@ -293,36 +330,15 @@ public class MusicService extends Service implements IMusicService.View {
         }
     }
 
-    @Override
-    public void updateTrackProgress(int progress) {
-        mMusicPlayer.seekTo(progress);
-        sendUpdateTrackProgress(mMusicPlayer.getCurrentPosition(), true);
-    }
-
-    @Override
-    public void repeatTrack(boolean isRepeat) {
-        mMusicPlayer.setLooping(isRepeat);
-    }
-
-    @Override
-    public void showActivity(String playlist, String track) {
-        Intent intent = new Intent(this, PlayerActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        intent.putExtra(Helper.ACTION_EXTRA, MusicBroadcastReceiver.SHOW_ACTIVITY);
-        startActivity(intent);
-    }
-
     Loaders.MusicInfoLoader musicInfoLoader;
     Loaders.AlbumCoverLoader albumCoverLoader;
 
-    @Override
     public void playTrack(@NonNull String path) {
-        //TODO: Переписать, сделать более плаавное обновление на экране
+        //TODO: Переписать, сделать более плавное обновление на экране
+        stopTimer();
         if (mMusicPlayer.isPlaying()) {
-            pauseMusic();
-            GlobalModel.setTrackProgress(0, true, 0);
+            MusicModel.setCurrentTrackProgress(0);
         }
-        GlobalModel.getCurrentTrack().setPath(path);
         if (musicInfoLoader != null) {
             musicInfoLoader.cancel(true);
             musicInfoLoader = null;
@@ -331,46 +347,39 @@ public class MusicService extends Service implements IMusicService.View {
             albumCoverLoader.cancel(true);
             albumCoverLoader = null;
         }
-        musicInfoLoader = new Loaders.MusicInfoLoader(this, path);
-        musicInfoLoader.setFinishCallback(new BaseAsyncTask.FinishCallback<MusicInfo>() {
-            @Override
-            public void onFinish(MusicInfo musicInfo) {
-                GlobalModel.updateTrackText(musicInfo);
-            }
 
-        });
-        musicInfoLoader.execute();
-        albumCoverLoader =
-                new Loaders.AlbumCoverLoader(this, path, Theme.getDefaultAlbumCover());
-        albumCoverLoader.setFinishCallback(new BaseAsyncTask.FinishCallback<BitmapDrawable>() {
-            @Override
-            public void onFinish(BitmapDrawable bitmapDrawable) {
-                GlobalModel.updateTrackCover(bitmapDrawable);
-                mPresenter.onMusicChanged(GlobalModel.getCurrentTrack());
+        try {
+            if (mProgressUpdater != null) {
+                throw new IllegalStateException("Track progress updater is running. Stop it!");
             }
+            mMusicPlayer.reset();
+            mMusicPlayer.setDataSource(path);
+            mMusicPlayer.prepareAsync();
+            startTimer();
 
-        });
-        albumCoverLoader.execute();
+            musicInfoLoader = new Loaders.MusicInfoLoader(this, path);
+            musicInfoLoader.setFinishCallback(data -> {
+                playerManager.rememberPath(data.getPath());
+                GlobalModel.updateTrackText(data);
+            });
+            musicInfoLoader.setCancelCallback(GlobalModel::updateTrackText);
+            musicInfoLoader.execute();
+            albumCoverLoader =
+                    new Loaders.AlbumCoverLoader(this, path, Theme.getDefaultAlbumCoverCopy());
+            albumCoverLoader.setFinishCallback(MusicModel::setCurrentTrackCover);
+            albumCoverLoader.execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    @Override
     public void closeService() {
         unregisterReceiver(mPlayerReceiver);
         unregisterReceiver(mHeadphoneMuteReceiver);
         hidePlayer();
         stopService(mServiceIntent);
-        mPresenter.onPause();
-        mPresenter.onDestroy();
         mMusicPlayer.release();
-        if (GlobalModel.isTrackPlay()) {
-            mPresenter.onPlayPause();
-        }
         stopSelf();
-    }
-
-    public void sendUpdateTrackProgress(int progress, boolean isUnlockProgressUpdate) {
-        GlobalModel.setTrackProgress(progress, isUnlockProgressUpdate,
-                MusicPresener.GLOBAL_MODEL_LISTENER);
     }
 
     private NotificationCompat.Builder mServiceNotificationBuilder;

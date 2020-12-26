@@ -5,6 +5,8 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.util.TypedValue;
 
+import java.util.List;
+
 public class Helper {
     public static int getThemeColor(Context context, int attribute) {
         TypedValue typedValue = new TypedValue();

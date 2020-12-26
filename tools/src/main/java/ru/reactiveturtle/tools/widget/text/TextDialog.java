@@ -10,8 +10,10 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -20,12 +22,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatEditText;
 
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import ru.reactiveturtle.tools.R;
+import ru.reactiveturtle.tools.widget.BaseDialog;
 import ru.reactiveturtle.tools.widget.warning.MessageDialog;
 
-public class TextDialog extends BottomSheetDialogFragment {
+public class TextDialog extends BaseDialog {
     private AppCompatEditText editText;
     private OnClickListener onClickListener;
 

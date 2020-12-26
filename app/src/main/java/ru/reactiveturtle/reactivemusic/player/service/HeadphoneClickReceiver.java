@@ -34,7 +34,7 @@ public class HeadphoneClickReceiver extends BroadcastReceiver {
                     });
                 }
             }, 100);
-            GlobalModel.setTrackPlay(!GlobalModel.isTrackPlay());
+            MusicModel.switchTrackPlayPause();
         }
     }
 }

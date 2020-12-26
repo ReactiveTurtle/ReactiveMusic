@@ -25,8 +25,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import ru.reactiveturtle.tools.R;
+import ru.reactiveturtle.tools.widget.BaseDialog;
 
-public class SelectionDialog extends BottomSheetDialogFragment {
+public class SelectionDialog extends BaseDialog {
     private SelectionAdapter adapter;
 
     private Builder mBuilder;

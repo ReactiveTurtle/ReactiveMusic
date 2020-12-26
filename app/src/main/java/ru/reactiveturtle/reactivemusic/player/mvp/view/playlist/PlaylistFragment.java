@@ -9,14 +9,13 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -24,15 +23,19 @@ import butterknife.OnClick;
 import butterknife.OnLongClick;
 import butterknife.Unbinder;
 import ru.reactiveturtle.reactivemusic.R;
-import ru.reactiveturtle.reactivemusic.player.BaseMusicContract;
-import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
-import ru.reactiveturtle.reactivemusic.player.mvp.PlayerPresenter;
+import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerModel;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.list.MusicListAdapter;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
+import ru.reactiveturtle.reactivemusic.player.service.Bridges;
+import ru.reactiveturtle.reactivemusic.player.service.MusicModel;
+import ru.reactiveturtle.tools.reactiveuvm.Bridge;
+import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
+import ru.reactiveturtle.tools.reactiveuvm.StateKeeper;
+import ru.reactiveturtle.tools.reactiveuvm.fragment.ArchitectFragment;
 
-public class PlaylistFragment extends Fragment implements PlaylistContract.Fragment {
+public class PlaylistFragment extends ArchitectFragment {
     private Unbinder unbinder;
 
     public static PlaylistFragment newInstance() {
@@ -47,7 +50,6 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mPresenter = GlobalModel.PLAYER_PRESENTER;
     }
 
     @BindView(R.id.playerSmallPreviousTrack)
@@ -73,56 +75,96 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.playlist_fragment, container, false);
-        unbinder = ButterKnife.bind(this, view);
-        mPlaylistAdapter = new PlaylistAdapter();
-        LinearLayoutManager llm = new LinearLayoutManager(getContext());
-        mMusicListAdapter = new MusicListAdapter(llm);
-        mRecyclerView.setAdapter(mPlaylistAdapter);
-        mRecyclerView.setLayoutManager(llm);
-
-        if (mPresenter != null) {
-            mPresenter.onPlaylistAvailable(this);
-        }
-
-        mPlaylistAdapter.setOnItemClickListener(new PlaylistAdapter.OnItemClickListener() {
-            @Override
-            public void onClick(String playlistName) {
-                mPresenter.onOpenPlaylist(playlistName);
-            }
-
-            @Override
-            public void onLongClick(String playlistName) {
-                mPresenter.onShowPlaylistActions(playlistName);
-            }
-        });
-
-        mPreviousTrack.setOnClickListener((v) -> {
-            Objects.requireNonNull(mPresenter);
-            mPresenter.onPreviousTrack();
-        });
-
-        mPlayPause.setOnClickListener((v) -> {
-            Objects.requireNonNull(mPresenter);
-            mPresenter.onPlayPause();
-        });
-
-        mNextTrack.setOnClickListener((v) -> {
-            Objects.requireNonNull(mPresenter);
-            mPresenter.onNextTrack();
-        });
-
-        mMusicListAdapter.setOnItemClickListener(musicInfo ->
-                mPresenter.onPlaylistMusicSelected(musicInfo));
-        return view;
+        return inflater.inflate(R.layout.playlist_fragment, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+        unbinder = ButterKnife.bind(this, view);
+        mPlaylistAdapter = new PlaylistAdapter();
+        LinearLayoutManager llm = new LinearLayoutManager(getContext());
+        mMusicListAdapter = new MusicListAdapter(llm);
+        mRecyclerView.setLayoutManager(llm);
+
+        mPlaylistAdapter.setOnItemClickListener(new PlaylistAdapter.OnItemClickListener() {
+            @Override
+            public void onClick(String playlistName) {
+                ReactiveArchitect.getStringBridge(Bridges.PlaylistOpen_To_ShowPlaylist).pull(playlistName);
+            }
+
+            @Override
+            public void onLongClick(String playlistName) {
+                PlayerModel.setPlaylistActionsPlaylistName(playlistName);
+            }
+        });
+
+        mPreviousTrack.setOnClickListener((v) ->
+                ReactiveArchitect.getBridge(Bridges.PreviousTrackClick_To_PlayTrack).pull());
+        mPlayPause.setOnClickListener((v) -> PlayerModel.switchPlayPause());
+        mNextTrack.setOnClickListener((v) ->
+                ReactiveArchitect.getBridge(Bridges.NextTrackClick_To_PlayTrack).pull());
+
+        mMusicListAdapter.setOnItemClickListener(new MusicListAdapter.OnItemClickListener() {
+            @Override
+            public void onClick(MusicInfo musicInfo) {
+                MusicModel.setCurrentTrackPath(musicInfo.getPath());
+            }
+
+            @Override
+            public void onLongClick(String trackPath) {
+                ReactiveArchitect.getStringBridge(Bridges.PlaylistFragment_To_ShowTrackActions)
+                        .pull(trackPath);
+            }
+        });
+
         updateThemeContext();
         updateTheme();
+        super.onViewCreated(view, savedInstanceState);
     }
+
+    @Override
+    protected void onInitializeBinders(List<StateKeeper.Binder> container) {
+        StateKeeper.Binder.Callback artistAlbumCallback = (view1, value) ->
+                showCurrentTrackInfo(MusicModel.getCurrentTrackArtist(), MusicModel.getCurrentTrackAlbum());
+        container.addAll(Arrays.asList(
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_NAME)
+                        .subscribe(mTitle, "setText", CharSequence.class).call(),
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_ARTIST)
+                        .subscribe(mInfo, "setText", CharSequence.class, artistAlbumCallback).call(),
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_ALBUM)
+                        .subscribe(mInfo, "setText", CharSequence.class, artistAlbumCallback).call(),
+                ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_PATH)
+                        .subscribe((view12, value) ->
+                                mMusicListAdapter.setSelectedTrackPath((String) value)),
+
+                ReactiveArchitect.getStateKeeper(MusicModel.IS_TRACK_PLAY)
+                        .subscribe(mPlayPauseCallback).call(),
+
+                ReactiveArchitect.getStateKeeper(PlayerModel.PLAYLISTS)
+                        .subscribe((view13, value) -> showPlaylists((List) value)).call(),
+
+                ReactiveArchitect.getStateKeeper(PlayerModel.OPEN_PLAYLIST)
+                        .subscribe((view13, value) -> showPlaylist((List) value)),
+                ReactiveArchitect.getStateKeeper(Theme.COLOR_SET).subscribe((view, value) -> updateTheme()),
+                ReactiveArchitect.getStateKeeper(Theme.IS_DARK).subscribe((view, value) -> updateThemeContext()).call()
+        ));
+    }
+
+    @Override
+    protected void onInitializeBridges(List<Bridge> container) {
+        container.addAll(Arrays.asList(
+                ReactiveArchitect.createStringBridge(Bridges.PlaylistCreated_To_UpdateFragment).connect(this::addPlaylist),
+                ReactiveArchitect.createStringBridge(Bridges.FindTrack_To_PlaylistScrollToTrack)
+                        .connect(param -> scrollToTrack(mMusicListAdapter.indexOf(param))),
+                ReactiveArchitect.createStringBridge(Bridges.RenameDialog_To_RenamePlaylistList)
+                        .connect(param -> renamePlaylist(PlayerModel.getPlaylistActionsPlaylistName(), param))
+        ));
+    }
+
+    private StateKeeper.Binder.Callback mPlayPauseCallback = (view1, value) ->
+            mPlayPause.setBackground(ThemeHelper.getDefaultRoundButtonDrawable(
+                    ((boolean) value) ? R.drawable.ic_pause : R.drawable.ic_play));
+
 
     @Override
     public void onDestroyView() {
@@ -130,30 +172,13 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
         unbinder.unbind();
     }
 
-    @Override
-    public void showCurrentTrack(MusicInfo musicInfo) {
-        mTitle.setText(musicInfo.getTitle());
-        String info = musicInfo.getArtist() + " | " + musicInfo.getAlbum();
+    public void showCurrentTrackInfo(String artist, String album) {
+        String info = (artist == null ? "" : (artist))
+                + (album != null && artist != null ? " | " : "")
+                + (album == null ? "" : album);
         mInfo.setText(info);
-        mMusicListAdapter.setSelectedTrackPath(musicInfo.getPath());
     }
 
-    @Override
-    public void clearCurrentMusic() {
-
-    }
-
-    @Override
-    public void startMusic() {
-        mPlayPause.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_pause));
-    }
-
-    @Override
-    public void pauseMusic() {
-        mPlayPause.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_play));
-    }
-
-    @Override
     public void updateTheme() {
         Theme.updateFab(mPlaylistAdd);
         LinearLayoutManager llm = (LinearLayoutManager) mRecyclerView.getLayoutManager();
@@ -166,9 +191,10 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
                 mMusicListAdapter.notifyItemChanged(index);
             }
         }
+        mPlayPause.setBackground(ThemeHelper.getDefaultRoundButtonDrawable(
+                MusicModel.isTrackPlay() ? R.drawable.ic_pause : R.drawable.ic_play));
     }
 
-    @Override
     public void updateThemeContext() {
         mPlaylistEmpty.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
         mTitle.setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY);
@@ -187,34 +213,32 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
             }
         }
         if (getView() != null) {
-            getView().findViewById(R.id.playerSmallDivider).setBackgroundColor(Theme.CONTEXT_LIGHT);
+            getView().findViewById(R.id.playerSmallDivider)
+                    .setBackgroundColor(ThemeHelper.setAlpha("42", Theme.CONTEXT_LIGHT));
         }
 
         mPreviousTrack.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_previous));
         mNextTrack.setBackground(ThemeHelper.getDefaultButtonDrawable(R.drawable.ic_next));
     }
 
-    private PlaylistContract.Presenter mPresenter;
-
-    @Override
     public void showPlaylists(List<String> playlists) {
+        mRecyclerView.setAdapter(mPlaylistAdapter);
+        mPlaylistEmpty.setText(R.string.playlistsNotFound);
+        mPlaylistAdd.setImageResource(R.drawable.ic_add_playlist);
+
         mPlaylistAdapter.setPlaylists(playlists);
         mPlaylistEmpty.setVisibility(playlists.size() > 0 ? View.GONE : View.VISIBLE);
-        mPlaylistEmpty.setText(R.string.playlistsNotFound);
     }
 
-    @Override
     public void addPlaylist(String result) {
         mPlaylistAdapter.addPlaylist(result);
         mPlaylistEmpty.setVisibility(View.GONE);
     }
 
-    @Override
     public void renamePlaylist(String oldName, String newName) {
         mPlaylistAdapter.renamePlaylist(oldName, newName);
     }
 
-    @Override
     public void removePlaylist(String playlistName) {
         mPlaylistAdapter.removePlaylist(playlistName);
         if (mPlaylistAdapter.getItemCount() == 0) {
@@ -222,8 +246,7 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
         }
     }
 
-    @Override
-    public void showPlaylist(String name, List<String> playlist) {
+    public void showPlaylist(List<String> playlist) {
         mRecyclerView.setAdapter(mMusicListAdapter);
         mMusicListAdapter.addPaths(playlist);
         mPlaylistEmpty.setVisibility(playlist.size() > 0 ? View.GONE : View.VISIBLE);
@@ -231,13 +254,11 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
         mPlaylistAdd.setImageResource(R.drawable.ic_add);
     }
 
-    @Override
     public void addTrack(String path) {
         mMusicListAdapter.addItem(path);
         mPlaylistEmpty.setVisibility(View.GONE);
     }
 
-    @Override
     public void removeTrack(String path) {
         mMusicListAdapter.removeItem(path);
         if (mMusicListAdapter.getItemCount() == 0) {
@@ -245,12 +266,10 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
         }
     }
 
-    @Override
     public void scrollToTrack(int index) {
         mRecyclerView.smoothScrollToPosition(index);
     }
 
-    @Override
     public void closePlaylist() {
         mRecyclerView.setAdapter(mPlaylistAdapter);
         mPlaylistEmpty.setVisibility(mPlaylistAdapter.getItemCount() > 0 ? View.GONE : View.VISIBLE);
@@ -258,7 +277,6 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
         mPlaylistAdd.setImageResource(R.drawable.ic_add_playlist);
     }
 
-    @Override
     public void scrollToPlaylist(int index) {
 
     }
@@ -268,17 +286,16 @@ public class PlaylistFragment extends Fragment implements PlaylistContract.Fragm
 
     @OnClick(R.id.playlistAdd)
     protected void addClick() {
-        Objects.requireNonNull(mPresenter);
-        mPresenter.onPlaylistAdd();
+        ReactiveArchitect.getBridge(Bridges.PlaylistAddClick_To_ShowCreateNameDialog).pull();
     }
 
     @OnClick(R.id.playerSmallClicker)
     protected void scrollToCurrentTrack() {
-        mPresenter.onFindTrack(mMusicListAdapter.getSelectedTrackPath());
+        ReactiveArchitect.getBridge(Bridges.PlaylistClick_To_FindTrack).pull();
     }
 
     @OnLongClick(R.id.playerSmallClicker)
     protected void findCurrentTrackInPrimaryPlaylist() {
-        mPresenter.onFindTrackInPlaylist(null, mMusicListAdapter.getSelectedTrackPath());
+        ReactiveArchitect.getBridge(Bridges.PlaylistClick_To_FindTrackInMainPlaylist).pull();
     }
 }

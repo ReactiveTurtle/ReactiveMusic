@@ -152,12 +152,12 @@
         app:elevation="0dp"
         app:iconTint="@null"
         app:layout_constraintBottom_toBottomOf="@+id/playerPlayPause"
-        app:layout_constraintEnd_toStartOf="@+id/playerRepeatTrack"
+        app:layout_constraintEnd_toStartOf="@+id/playerLoopingTrack"
         app:layout_constraintStart_toEndOf="@+id/playerPlayPause"
         app:layout_constraintTop_toTopOf="@+id/playerPlayPause" />
 
     <CheckBox
-        android:id="@+id/playerRepeatTrack"
+        android:id="@+id/playerLoopingTrack"
         android:layout_width="@dimen/player_default_button_size"
         android:layout_height="@dimen/player_default_button_size"
         android:background="@drawable/repeat_button"

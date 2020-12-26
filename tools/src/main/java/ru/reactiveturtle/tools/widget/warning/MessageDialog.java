@@ -19,8 +19,9 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import ru.reactiveturtle.tools.R;
+import ru.reactiveturtle.tools.widget.BaseDialog;
 
-public class MessageDialog extends BottomSheetDialogFragment {
+public class MessageDialog extends BaseDialog {
     private Builder mBuilder;
     private OnClickListener onClickListener;
 

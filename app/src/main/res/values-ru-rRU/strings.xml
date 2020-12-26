@@ -40,4 +40,9 @@
     <string name="yes">Да</string>
     <string name="you_really_want">Вы действительно хотите</string>
     <string name="playlist">Плейлист</string>
+    <string name="delete_from_playlist">Удалить из плейлиста</string>
+    <string name="delete_from_storage">Удалить из памяти</string>
+    <string name="track">Трек</string>
+    <string name="from_playlist">Из плейлиста</string>
+    <string name="from_storage">Из памяти</string>
 </resources>

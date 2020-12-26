@@ -8,18 +8,14 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 import ru.reactiveturtle.reactivemusic.R;
-import ru.reactiveturtle.reactivemusic.player.BaseMusicContract;
-import ru.reactiveturtle.reactivemusic.player.mvp.PlayerPresenter;
-import ru.reactiveturtle.reactivemusic.player.mvp.view.list.MusicListContract;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.list.MusicListFragment;
-import ru.reactiveturtle.reactivemusic.player.mvp.view.music.MusicContract;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.music.MusicFragment;
-import ru.reactiveturtle.reactivemusic.player.mvp.view.playlist.PlaylistContract;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.playlist.PlaylistAdapter;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.playlist.PlaylistFragment;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.SettingsFragment;
 
 public class PlayerPagerAdapter extends FragmentStateAdapter {
-    private BaseMusicContract.Fragment[] fragments = new BaseMusicContract.Fragment[4];
+    private Fragment[] fragments = new Fragment[4];
     private String[] fragmentTitles = new String[4];
 
     public PlayerPagerAdapter(@NonNull FragmentActivity fragmentActivity) {
@@ -34,7 +30,7 @@ public class PlayerPagerAdapter extends FragmentStateAdapter {
     @NonNull
     @Override
     public Fragment createFragment(int position) {
-        BaseMusicContract.Fragment fragment;
+        Fragment fragment;
         switch (position) {
             case 0:
                 fragment = MusicFragment.newInstance();
@@ -62,16 +58,16 @@ public class PlayerPagerAdapter extends FragmentStateAdapter {
         return fragments.length;
     }
 
-    public MusicContract.Fragment getPlayerFragment() {
-        return (MusicContract.Fragment) fragments[0];
+    public MusicFragment getPlayerFragment() {
+        return (MusicFragment) fragments[0];
     }
 
-    public PlaylistContract.Fragment getPlaylistFragment() {
-        return (PlaylistContract.Fragment) fragments[1];
+    public PlaylistFragment getPlaylistFragment() {
+        return (PlaylistFragment) fragments[1];
     }
 
-    public MusicListContract.Fragment getListFragment() {
-        return (MusicListContract.Fragment) fragments[2];
+    public MusicListFragment getListFragment() {
+        return (MusicListFragment) fragments[2];
     }
 
     public void setTitle(int currentItem, String name) {

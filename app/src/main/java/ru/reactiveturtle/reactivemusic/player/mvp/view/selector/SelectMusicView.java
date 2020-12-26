@@ -22,11 +22,10 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
-import ru.reactiveturtle.reactivemusic.player.mvp.PlayerContract;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 
-public class SelectMusicView implements SelectorContract.View {
+public class SelectMusicView {
     private ViewPager2 mViewPager;
     private SelectMusicPagerAdapter mPagerAdapter;
     private MediaPlayer mTestMediaPlayer;
@@ -71,14 +70,12 @@ public class SelectMusicView implements SelectorContract.View {
             @Override
             public void onChecked(String path, boolean exists) {
                 if (exists) {
-                    mPresenter.onPlaylistTrackChanged(path, false);
                     mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).removeSelectedTrack(path);
                 } else {
                     try {
                         mTestMediaPlayer.reset();
                         mTestMediaPlayer.setDataSource(path);
                         mTestMediaPlayer.prepare();
-                        mPresenter.onPlaylistTrackChanged(path, true);
                         mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).addSelectedTrack(path);
                     } catch (IOException ignored) {
                         mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).removeSelectedFile(path);
@@ -91,13 +88,11 @@ public class SelectMusicView implements SelectorContract.View {
             public void onUpdate(List<String> selectedFiles) {
                 mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).setSelectedItems(selectedFiles);
                 mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).setSelectedItems(selectedFiles);
-                mPresenter.onPlaylistUpdate(selectedFiles);
             }
         });
         mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).setOnCheckListener(new SelectMusicListFragment.OnCheckListener() {
             @Override
             public void onChecked(String path, boolean exists) {
-                mPresenter.onPlaylistTrackChanged(path, !exists);
                 if (exists) {
                     mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).removeSelectedFile(path);
                 } else {
@@ -109,7 +104,6 @@ public class SelectMusicView implements SelectorContract.View {
             public void onUpdate(List<String> playlist) {
                 mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).setSelectedItems(playlist);
                 mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).setSelectedItems(playlist);
-                mPresenter.onPlaylistUpdate(playlist);
             }
         });
     }
@@ -122,47 +116,34 @@ public class SelectMusicView implements SelectorContract.View {
         mViewPager.setCurrentItem(position);
     }
 
-    private SelectorContract.Presenter mPresenter;
 
-    @Override
-    public void setPresenter(@NonNull PlayerContract.Presenter presenter) {
-        mPresenter = (SelectorContract.Presenter) presenter;
-    }
-
-    @Override
     public void setSelectedItems(List<String> playlist) {
         mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).setSelectedItems(playlist);
         mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).setSelectedItems(playlist);
     }
 
-    @Override
     public void showSelectedItem(@NonNull String path) {
         mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).addSelectedTrack(path);
         mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).addSelectedFile(path);
     }
 
-    @Override
     public void hideSelectedItem(@NonNull String path) {
         mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).removeSelectedTrack(path);
         mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).removeSelectedFile(path);
     }
 
-    @Override
     public void onResume() {
         mTestMediaPlayer = new MediaPlayer();
     }
 
-    @Override
     public void onPause() {
         mTestMediaPlayer.release();
     }
 
-    @Override
     public SelectMusicListFragment getSelectMusicList() {
         return (SelectMusicListFragment) mPagerAdapter.getFragment(0);
     }
 
-    @Override
     public void updateTheme() {
         mToolbar.setBackgroundColor(Theme.getColorSet().getPrimary());
         Drawable drawable = Helper.getNavigationIcon(
@@ -178,12 +159,10 @@ public class SelectMusicView implements SelectorContract.View {
         mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).updateTheme();
     }
 
-    @Override
     public void updateThemeContext() {
         mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).updateThemeContext();
     }
 
-    @Override
     public void updateBackground(Drawable drawable) {
         mViewPager.setBackground(drawable);
     }

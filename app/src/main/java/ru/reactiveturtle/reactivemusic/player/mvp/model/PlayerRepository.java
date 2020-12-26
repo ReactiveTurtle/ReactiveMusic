@@ -13,11 +13,10 @@ import java.util.Objects;
 
 import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
-import ru.reactiveturtle.reactivemusic.player.mvp.PlayerContract;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ColorSet;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 
-public class PlayerRepository implements PlayerContract.Repository {
+public class PlayerRepository {
     private static final String REPOSITORY_NAME = "player_repository";
     private static final String SELECTED_MUSIC_FILE = "selected_music_file";
     private static final String CURRENT_PLAYLIST = "current_playlist";
@@ -39,67 +38,53 @@ public class PlayerRepository implements PlayerContract.Repository {
         return preferences.edit();
     }
 
-    @Override
-    public void setCurrentMusic(@Nullable MusicInfo musicInfo) {
-        getEditor().putString(SELECTED_MUSIC_FILE,
-                musicInfo != null ? musicInfo.getPath() : null).apply();
+    public void setCurrentTrackPath(@Nullable String path) {
+        getEditor().putString(SELECTED_MUSIC_FILE, path).apply();
     }
 
     @Nullable
-    @Override
-    public MusicInfo getCurrentMusic() {
-        String path = preferences.getString(SELECTED_MUSIC_FILE, null);
-        return path != null ? new MusicInfo(path) : null;
+    public String getCurrentTrackPath() {
+        return preferences.getString(SELECTED_MUSIC_FILE, null);
     }
 
-    @Override
     public void setCurrentPlaylist(@Nullable String playlist) {
         getEditor().putString(CURRENT_PLAYLIST, playlist).apply();
     }
 
     @Nullable
-    @Override
     public String getCurrentPlaylist() {
         return preferences.getString(CURRENT_PLAYLIST, null);
     }
 
-    @Override
-    public void setRepeatTrack(boolean isRepeat) {
+    public void setTrackLooping(boolean isRepeat) {
         getEditor().putBoolean(IS_REPEAT_TRACK, isRepeat).apply();
     }
 
-    @Override
-    public boolean isRepeatTrack() {
+    public boolean isTrackLooping() {
         return preferences.getBoolean(IS_REPEAT_TRACK, false);
     }
 
-    @Override
     public void setPlayRandomTrack(boolean isRandom) {
         getEditor().putBoolean(IS_PLAY_RANDOM_TRACK, isRandom).apply();
     }
 
-    @Override
     public boolean isPlayRandomTrack() {
         return preferences.getBoolean(IS_PLAY_RANDOM_TRACK, false);
     }
 
-    @Override
     public void setThemeContextDark(boolean isDark) {
         getEditor().putBoolean(THEME_IS_DARK, isDark).apply();
     }
 
-    @Override
     public boolean isThemeContextDark() {
         return preferences.getBoolean(THEME_IS_DARK, false);
     }
 
-    @Override
     public void setThemeColorSet(@NonNull ColorSet colorSet) {
         getEditor().putString(THEME_COLOR, colorSet.toString()).apply();
     }
 
     @NonNull
-    @Override
     public ColorSet getThemeColorSet() {
         String colorString = preferences.getString(THEME_COLOR, null);
         if (colorString == null) {
@@ -108,7 +93,6 @@ public class PlayerRepository implements PlayerContract.Repository {
         return new ColorSet(colorString);
     }
 
-    @Override
     public boolean addPlaylistName(@NonNull String name) {
         String src = preferences.getString(PLAYLISTS, null);
         if (src == null) {
@@ -124,7 +108,6 @@ public class PlayerRepository implements PlayerContract.Repository {
         return isAdded;
     }
 
-    @Override
     public void removePlaylistName(@NonNull String playlist) {
         List<String> playlists = getCodedPlaylists();
         playlists.remove(Helper.code(playlist));
@@ -132,7 +115,6 @@ public class PlayerRepository implements PlayerContract.Repository {
         getEditor().putString(playlist, null).apply();
     }
 
-    @Override
     public void updatePlaylist(@NonNull String playlist, @NonNull List<String> playlistTracks) {
         List<String> codedTracks = new ArrayList<>();
         for (String track : playlistTracks) {
@@ -141,11 +123,10 @@ public class PlayerRepository implements PlayerContract.Repository {
         getEditor().putString(playlist, listToString(codedTracks)).apply();
     }
 
-    @Override
     public boolean renamePlaylist(@NonNull String oldName, @NonNull String newName) {
-        String playlistString = preferences.getString(oldName, "");
+        String playlistString = preferences.getString(oldName, null);
         List<String> playlists = getPlaylists();
-        int playlistIndex = getPlaylists().indexOf(oldName);
+        int playlistIndex = playlists.indexOf(oldName);
         if (!playlists.contains(newName)) {
             getEditor().putString(oldName, null).apply();
 
@@ -159,7 +140,6 @@ public class PlayerRepository implements PlayerContract.Repository {
         }
     }
 
-    @Override
     public boolean addTrack(@NonNull String playlist, @NonNull String trackPath) {
         String src = preferences.getString(playlist, null);
         if (src == null) {
@@ -175,7 +155,6 @@ public class PlayerRepository implements PlayerContract.Repository {
         return isAdded;
     }
 
-    @Override
     public void removeTrack(@NonNull String playlist, @NonNull String trackPath) {
         List<String> tracks = getCodedPlaylist(playlist);
         tracks.remove(Helper.code(trackPath));
@@ -183,7 +162,6 @@ public class PlayerRepository implements PlayerContract.Repository {
     }
 
     @NonNull
-    @Override
     public List<String> getPlaylists() {
         String playlists = preferences.getString(PLAYLISTS, null);
         String[] playlistsArray = playlists != null ? playlists.split(";") : new String[0];
@@ -194,14 +172,12 @@ public class PlayerRepository implements PlayerContract.Repository {
     }
 
     @NonNull
-    @Override
     public List<String> getCodedPlaylists() {
         String[] playlists = Objects.requireNonNull(preferences.getString(PLAYLISTS, "")).split(";");
         return new ArrayList<>(Arrays.asList(playlists));
     }
 
     @NonNull
-    @Override
     public List<String> getPlaylist(@Nullable String playlist) {
         if (playlist != null) {
             String tracks = preferences.getString(playlist, null);
@@ -216,13 +192,11 @@ public class PlayerRepository implements PlayerContract.Repository {
     }
 
     @NonNull
-    @Override
     public List<String> getCodedPlaylist(@NonNull String playlist) {
         String[] tracks = Objects.requireNonNull(preferences.getString(playlist, "")).split(";");
         return new ArrayList<>(Arrays.asList(tracks));
     }
 
-    @Override
     public void release() {
         context = null;
     }

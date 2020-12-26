@@ -50,7 +50,10 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
@@ -60,32 +63,49 @@ import ru.reactiveturtle.reactivemusic.player.service.MusicService;
 public class Helper {
     public static final String ACTION_EXTRA = "action_extra";
 
-    @NonNull
-    public static List<String> getAllTracksPathsInfo(@NonNull Context context) {
-        String[] proj = {MediaStore.Audio.Media.DATA};
-        Uri uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        CursorLoader loader = new CursorLoader(context, uri, proj, MediaStore.Audio.Media.IS_MUSIC + " = 1",
-                null, null);
-        Cursor cursor = loader.loadInBackground();
-        List<String> tracks = new ArrayList<>();
-        if (cursor != null) {
-            if (cursor.moveToFirst()) {
-                do {
-                    int pathColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
+    private static final List<String> allTracksPaths = new ArrayList<>();
+    private static Timer allTracksPathsDestroyTimeout;
 
-                    String path = cursor.getString(pathColumnIndex);
-                    String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                            Helper.getPathFormat(path));
-                    if (mimeType != null) {
-                        if (mimeType.equals("audio/mpeg") ||
-                                mimeType.equals("audio/vnd.wave")) {
-                            tracks.add(path);
+    @NonNull
+    public static synchronized List<String> getAllTracksPathsInfo(@NonNull Context context) {
+        if (allTracksPathsDestroyTimeout == null) {
+            String[] proj = {MediaStore.Audio.Media.DATA};
+            Uri uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+            CursorLoader loader = new CursorLoader(context, uri, proj, MediaStore.Audio.Media.IS_MUSIC + " = 1",
+                    null, null);
+            Cursor cursor = loader.loadInBackground();
+            List<String> tracks = new ArrayList<>();
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    do {
+                        int pathColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
+
+                        String path = cursor.getString(pathColumnIndex);
+                        String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
+                                Helper.getPathFormat(path));
+                        if (mimeType != null) {
+                            if (mimeType.equals("audio/mpeg") ||
+                                    mimeType.equals("audio/vnd.wave")) {
+                                tracks.add(path);
+                            }
                         }
-                    }
-                } while (cursor.moveToNext());
+                    } while (cursor.moveToNext());
+                }
             }
+            allTracksPaths.clear();
+            allTracksPaths.addAll(tracks);
         }
-        return tracks;
+        if (allTracksPathsDestroyTimeout != null) {
+            allTracksPathsDestroyTimeout.cancel();
+        }
+        allTracksPathsDestroyTimeout = new Timer();
+        allTracksPathsDestroyTimeout.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                allTracksPathsDestroyTimeout = null;
+            }
+        }, 60000);
+        return Collections.unmodifiableList(allTracksPaths);
     }
 
     public static String getPathFormat(@NonNull String path) {
@@ -166,20 +186,22 @@ public class Helper {
     }
 
     public static BitmapDrawable getDefaultAlbumCover(Resources resources) {
+        int width = 512;
+        int height = 512;
         Bitmap note = Bitmap.createScaledBitmap(BitmapFactory.decodeResource(resources, R.drawable.ic_note),
-                256, 256, true);
+                width / 2, height / 2, true);
         Canvas canvas = new Canvas(note);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(Color.WHITE);
         paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
-        canvas.drawRect(0, 0, 256, 256, paint);
+        canvas.drawRect(0, 0, width, height, paint);
 
         paint.setXfermode(null);
-        Bitmap bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         canvas = new Canvas(bitmap);
         paint.setColor(Color.BLACK);
         canvas.drawRoundRect(new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight()),
-                64, 64, paint);
+                width / 4f, height / 4f, paint);
         canvas.drawBitmap(note, (bitmap.getWidth() - note.getWidth()) / 2f,
                 (bitmap.getHeight() - note.getHeight()) / 2f, paint);
 
@@ -488,7 +510,7 @@ public class Helper {
             stackpointer = radius;
             for (y = 0; y < h; y++) {
                 // Preserve alpha channel: ( 0xff000000 & pix[yi] )
-                pix[yi] = ( 0xff000000 & pix[yi] ) | ( dv[rsum] << 16 ) | ( dv[gsum] << 8 ) | dv[bsum];
+                pix[yi] = (0xff000000 & pix[yi]) | (dv[rsum] << 16) | (dv[gsum] << 8) | dv[bsum];
 
                 rsum -= routsum;
                 gsum -= goutsum;

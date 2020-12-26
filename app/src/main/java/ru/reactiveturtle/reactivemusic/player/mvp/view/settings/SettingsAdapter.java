@@ -17,6 +17,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import ru.reactiveturtle.reactivemusic.R;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 
 public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.LineViewHolder> {
     private List<SettingsItem> items = new ArrayList<>();
@@ -67,6 +68,7 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.LineVi
                 SettingsItem item = items.get(index);
                 View icon = itemRoot.findViewById(R.id.settingsItemIcon);
                 TextView title = itemRoot.findViewById(R.id.settingsItemTitle);
+                title.setTextColor(Theme.CONTEXT_SECONDARY_TEXT);
 
                 icon.setBackground(item.getIcon());
                 title.setText(item.getTitle());

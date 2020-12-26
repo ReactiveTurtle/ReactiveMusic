@@ -41,4 +41,9 @@
     <string name="yes">Yes</string>
     <string name="you_really_want">You really want</string>
     <string name="playlist">Playlist</string>
+    <string name="delete_from_playlist">Delete from playlist</string>
+    <string name="delete_from_storage">Delete from storage</string>
+    <string name="track">Track</string>
+    <string name="from_playlist">From playlist</string>
+    <string name="from_storage">From storage</string>
 </resources>

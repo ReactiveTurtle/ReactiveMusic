@@ -12,6 +12,7 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
+import android.view.View;
 import android.widget.SeekBar;
 
 import androidx.annotation.FloatRange;
@@ -26,6 +27,10 @@ import java.util.List;
 
 import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
+import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerModel;
+import ru.reactiveturtle.reactivemusic.player.service.MusicModel;
+import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
+import ru.reactiveturtle.tools.reactiveuvm.StateKeeper;
 import ru.reactiveturtle.tools.widget.wait.WaitDailog;
 import ru.reactiveturtle.tools.widget.text.TextDialog;
 import ru.reactiveturtle.tools.widget.warning.MessageDialog;
@@ -39,25 +44,36 @@ public class Theme {
     public static int CONTEXT_NEGATIVE_PRIMARY;
     public static int CONTEXT_NEGATIVE_SECONDARY;
     public static int CONTEXT_SECONDARY_TEXT;
-    public static boolean IS_DARK = false;
     public static boolean IS_NEON_ENABLED = false;
+
+    public static final String COLOR_SET = "COLOR_SET";
+    public static final String IS_DARK = "IS_DARK";
 
     public static void init(@NonNull Resources resources, @NonNull ColorSet colorSet, boolean isDark) {
         RESOURCES = resources;
         DEFAULT_ALBUM_COVER = Helper.getDefaultAlbumCover(resources);
-        Theme.colorSet = colorSet;
 
         int width = resources.getDisplayMetrics().widthPixels;
         Bitmap bitmap = Bitmap.createBitmap(width, 1, Bitmap.Config.ARGB_8888);
         mProgressDrawable = new BitmapDrawable(resources, bitmap);
 
-        updateContext(isDark);
-        update(colorSet, 0);
+        ReactiveArchitect.createState(COLOR_SET, colorSet).subscribe((view, value) -> {
+            update((ColorSet) value, 0);
+        }).call();
+        ReactiveArchitect.createState(IS_DARK, isDark).subscribe((view, value) -> updateContext((Boolean) value)).call();
+
+    }
+
+    public static void switchThemeContext() {
+        ReactiveArchitect.getStateKeeper(IS_DARK).changeState(!(Boolean) ReactiveArchitect.getStateKeeper(IS_DARK).getState());
+    }
+
+    public static boolean isDark() {
+        return (boolean) ReactiveArchitect.getStateKeeper(IS_DARK).getState();
     }
 
     public static void updateContext(boolean isDark) {
-        IS_DARK = isDark;
-        if (IS_DARK) {
+        if (isDark) {
             CONTEXT_PRIMARY = Color.parseColor("#000000");
             CONTEXT_PRIMARY_LIGHT = Color.parseColor("#121212");
             CONTEXT_LIGHT = Color.parseColor("#323232");
@@ -145,11 +161,15 @@ public class Theme {
         canvas.drawRect(0, 0, width * progressPercent, 1, paint);
     }
 
-    public static ColorSet getColorSet() {
-        return colorSet;
+    public static void setColorSet(ColorSet colorSet) {
+        ReactiveArchitect.getStateKeeper(COLOR_SET).changeState(colorSet);
     }
 
-    @Nullable
+    public static ColorSet getColorSet() {
+        return (ColorSet) ReactiveArchitect.getStateKeeper(COLOR_SET).getState();
+    }
+
+    @NonNull
     public static List<ColorSet> getColors(@IntRange(from = 0, to = 13) int brightness) {
         String palette = null;
         switch (brightness) {
@@ -195,19 +215,19 @@ public class Theme {
             case 13:
                 palette = ColorPalette.M_A700;
                 break;
+            default:
+                palette = ColorPalette.M_A700;
+                break;
         }
-        if (palette != null) {
-            List<ColorSet> colors = new ArrayList<>();
-            String[] paletteColors = palette.split("\\|");
-            for (int i = 0; i < paletteColors.length; i += 3) {
-                colors.add(new ColorSet(
-                        Color.parseColor("#" + paletteColors[i]),
-                        Color.parseColor("#" + paletteColors[i + 1]),
-                        Color.parseColor("#" + paletteColors[i + 2])));
-            }
-            return colors;
+        List<ColorSet> colors = new ArrayList<>();
+        String[] paletteColors = palette.split("\\|");
+        for (int i = 0; i < paletteColors.length; i += 3) {
+            colors.add(new ColorSet(
+                    Color.parseColor("#" + paletteColors[i]),
+                    Color.parseColor("#" + paletteColors[i + 1]),
+                    Color.parseColor("#" + paletteColors[i + 2])));
         }
-        return null;
+        return colors;
     }
 
     public static boolean isGrey(int color) {
@@ -231,14 +251,14 @@ public class Theme {
     public static void updateSeekBar(SeekBar seekBar) {
         int cursorColor = Theme.getColorSet().getPrimary();
         int seekBarColor = Theme.getColorSet().getPrimaryDark();
-        if (IS_DARK) {
+        if (isDark()) {
             cursorColor = Theme.getColorSet().getPrimaryLight();
             seekBarColor = Theme.getColorSet().getPrimary();
         }
         if (isGrey(cursorColor)) {
             cursorColor = Theme.CONTEXT_NEGATIVE_PRIMARY;
             seekBarColor = Theme.CONTEXT_NEGATIVE_SECONDARY;
-        } else if (!IS_DARK && isVeryBright(cursorColor)) {
+        } else if (!isDark() && isVeryBright(cursorColor)) {
             cursorColor = Theme.CONTEXT_NEGATIVE_PRIMARY;
             seekBarColor = Theme.CONTEXT_NEGATIVE_SECONDARY;
         }
@@ -251,7 +271,7 @@ public class Theme {
     @NonNull
     public static TextDialog.Builder getNameDialogBuilder() {
         return new TextDialog.Builder()
-                .setBackground(new ColorDrawable(Theme.IS_DARK ? Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY))
+                .setBackground(new ColorDrawable(Theme.isDark() ? Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY))
                 .setEditTextBackground(Helper.getRoundDrawable(Theme.CONTEXT_LIGHT,
                         RESOURCES.getDimensionPixelSize(R.dimen.big)))
                 .setHintColor(ThemeHelper.setAlpha("8a", Theme.CONTEXT_NEGATIVE_SECONDARY))
@@ -267,7 +287,7 @@ public class Theme {
     @NonNull
     public static MessageDialog.Builder getMessageDialogBuilder() {
         return new MessageDialog.Builder()
-                .setBackground(new ColorDrawable(Theme.IS_DARK ? Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY))
+                .setBackground(new ColorDrawable(Theme.isDark() ? Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY))
                 .setTitleColor(Theme.CONTEXT_NEGATIVE_PRIMARY)
                 .setNegativeTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY)
                 .setNegativeBackground(ThemeHelper.getButtonDrawable(Theme.CONTEXT_LIGHT))
@@ -278,9 +298,9 @@ public class Theme {
 
     public static WaitDailog.Builder getWaitDialogBuilder() {
         return new WaitDailog.Builder()
-                .setBackground(new ColorDrawable(Theme.IS_DARK ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY))
+                .setBackground(new ColorDrawable(Theme.isDark() ? Theme.CONTEXT_LIGHT : Theme.CONTEXT_PRIMARY))
                 .setTextColor(Theme.CONTEXT_NEGATIVE_PRIMARY)
-                .setProgressColor(!IS_DARK && Theme.isVeryBright(Theme.getColorSet().getPrimary()) ?
+                .setProgressColor(!isDark() && Theme.isVeryBright(Theme.getColorSet().getPrimary()) ?
                         Color.BLACK : Theme.getColorSet().getPrimary());
     }
 }

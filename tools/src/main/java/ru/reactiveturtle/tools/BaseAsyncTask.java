@@ -48,11 +48,10 @@ public class BaseAsyncTask<Result> extends AsyncTask<Void, Void, Result> {
         context = null;
     }
 
-    @Override
     protected void onCancelled(Result result) {
         super.onCancelled(result);
-        if (finishCallback != null) {
-            finishCallback.onFinish(result);
+        if (cancelCallback != null) {
+            cancelCallback.onCancel(result);
         }
     }
 
@@ -64,5 +63,15 @@ public class BaseAsyncTask<Result> extends AsyncTask<Void, Void, Result> {
 
     public interface FinishCallback<Result> {
         void onFinish(Result result);
+    }
+
+    private CancelCallback<Result> cancelCallback;
+
+    public void setCancelCallback(CancelCallback<Result> cancelCallback) {
+        this.cancelCallback = cancelCallback;
+    }
+
+    public interface CancelCallback<Result> {
+        void onCancel(Result result);
     }
 }
