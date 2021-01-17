@@ -3,9 +3,7 @@ package ru.reactiveturtle.reactivemusic.player.mvp.view.selector;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
-import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -15,7 +13,6 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
-import java.io.IOException;
 import java.util.List;
 
 import butterknife.BindView;
@@ -24,6 +21,8 @@ import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
+import ru.reactiveturtle.reactivemusic.player.service.Bridges;
+import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
 
 public class SelectMusicView {
     private ViewPager2 mViewPager;
@@ -44,7 +43,7 @@ public class SelectMusicView {
         mViewPager = activity.findViewById(R.id.selectMusicViewPager);
         TabLayout tabLayout = activity.findViewById(R.id.selectMusicTabLayout);
         mPagerAdapter = new SelectMusicPagerAdapter(activity);
-        mPagerAdapter.add(new SelectMusicListFragment(), new SelectMusicFilesFragment());
+        mPagerAdapter.add(new SelectMusicListFragment());
 
         mViewPager.setAdapter(mPagerAdapter);
         new TabLayoutMediator(tabLayout, mViewPager, (tab, position) -> {
@@ -65,71 +64,23 @@ public class SelectMusicView {
                 }
             }
         });
-
-        mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).setOnCheckListener(new SelectMusicFilesFragment.OnCheckListener() {
-            @Override
-            public void onChecked(String path, boolean exists) {
-                if (exists) {
-                    mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).removeSelectedTrack(path);
-                } else {
-                    try {
-                        mTestMediaPlayer.reset();
-                        mTestMediaPlayer.setDataSource(path);
-                        mTestMediaPlayer.prepare();
-                        mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).addSelectedTrack(path);
-                    } catch (IOException ignored) {
-                        mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).removeSelectedFile(path);
-                        Toast.makeText(mViewPager.getContext(), "В файле не записан звук", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            }
-
-            @Override
-            public void onUpdate(List<String> selectedFiles) {
-                mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).setSelectedItems(selectedFiles);
-                mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).setSelectedItems(selectedFiles);
-            }
-        });
         mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).setOnCheckListener(new SelectMusicListFragment.OnCheckListener() {
             @Override
             public void onChecked(String path, boolean exists) {
-                if (exists) {
-                    mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).removeSelectedFile(path);
+                if (!exists) {
+                    ReactiveArchitect.getStringBridge(Bridges.SelectMusicListFragment_To_AddTrack).pull(path);
+                    ReactiveArchitect.getStringBridge(Bridges.SelectMusicListFragment_To_AddTrackPlaylist).pull(path);
                 } else {
-                    mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).addSelectedFile(path);
+                    ReactiveArchitect.getStringBridge(Bridges.SelectMusicListFragment_To_RemoveTrack).pull(path);
+                    ReactiveArchitect.getStringBridge(Bridges.SelectMusicListFragment_To_RemoveTrackPlaylist).pull(path);
                 }
             }
 
             @Override
             public void onUpdate(List<String> playlist) {
-                mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).setSelectedItems(playlist);
-                mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).setSelectedItems(playlist);
+
             }
         });
-    }
-
-    public void onDestroy() {
-        mTestMediaPlayer.release();
-    }
-
-    public void setViewPagerPosition(int position) {
-        mViewPager.setCurrentItem(position);
-    }
-
-
-    public void setSelectedItems(List<String> playlist) {
-        mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).setSelectedItems(playlist);
-        mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).setSelectedItems(playlist);
-    }
-
-    public void showSelectedItem(@NonNull String path) {
-        mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).addSelectedTrack(path);
-        mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).addSelectedFile(path);
-    }
-
-    public void hideSelectedItem(@NonNull String path) {
-        mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).removeSelectedTrack(path);
-        mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).removeSelectedFile(path);
     }
 
     public void onResume() {
@@ -156,11 +107,9 @@ public class SelectMusicView {
             mToolbar.setTitleTextColor(Color.WHITE);
         }
         mPagerAdapter.getMusicFragment(SelectMusicListFragment.class).updateTheme();
-        mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).updateTheme();
     }
 
     public void updateThemeContext() {
-        mPagerAdapter.getFilesFragment(SelectMusicFilesFragment.class).updateThemeContext();
     }
 
     public void updateBackground(Drawable drawable) {

@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
+import ru.reactiveturtle.reactivemusic.player.service.MusicModel;
 import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
 
 public class PlayerModel {
@@ -45,7 +46,7 @@ public class PlayerModel {
     }
 
     public static void switchPlayPause() {
-        setPlay(!(Boolean) ReactiveArchitect.getStateKeeper(IS_PLAY).getState());
+        setPlay(!(Boolean) ReactiveArchitect.getStateKeeper(MusicModel.IS_TRACK_PLAY).getState());
     }
 
     public static void setPlay(boolean isPlay) {

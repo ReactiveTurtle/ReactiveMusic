@@ -70,6 +70,10 @@ public class PlayerPagerAdapter extends FragmentStateAdapter {
         return (MusicListFragment) fragments[2];
     }
 
+    public SettingsFragment getSettingsFragment() {
+        return (SettingsFragment) fragments[3];
+    }
+
     public void setTitle(int currentItem, String name) {
         fragmentTitles[currentItem] = name;
     }

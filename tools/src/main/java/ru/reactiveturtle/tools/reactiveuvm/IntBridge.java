@@ -12,13 +12,12 @@ public class IntBridge extends Bridge {
         return this;
     }
 
-    public void pull(int param) {
-        if (puller != null) {
-            puller.onPull(param);
-        }
+    public IntBridge pull(int value) {
+        puller.onPull(value);
+        return this;
     }
 
     public interface Puller {
-        void onPull(int param);
+        void onPull(int value);
     }
 }

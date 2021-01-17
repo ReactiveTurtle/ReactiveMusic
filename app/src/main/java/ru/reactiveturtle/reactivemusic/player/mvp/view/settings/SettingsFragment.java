@@ -37,6 +37,7 @@ import ru.reactiveturtle.reactivemusic.player.GlobalModel;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ColorPalette;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemesAdapter;
+import ru.reactiveturtle.reactivemusic.player.service.Bridges;
 import ru.reactiveturtle.tools.reactiveuvm.Bridge;
 import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
 import ru.reactiveturtle.tools.reactiveuvm.StateKeeper;
@@ -179,6 +180,7 @@ public class SettingsFragment extends ArchitectFragment {
         mSettingsAdapter = new SettingsAdapter();
         mSettingsMenu.setLayoutManager(new LinearLayoutManager(getContext()));
         mSettingsMenu.setAdapter(mSettingsAdapter);
+        mSettingsMenu.setVisibility(View.GONE);
 
         mSettingsAdapter.setOnItemClickListener(index -> {
             mSettingsMenu.setVisibility(View.GONE);
@@ -189,6 +191,7 @@ public class SettingsFragment extends ArchitectFragment {
                     mThemesRoot.setVisibility(View.VISIBLE);
                     break;
             }
+            ReactiveArchitect.getIntBridge(Bridges.SettingsClick_To_UpdateToolbarArrow).pull(index);
         });
         if (getActivity() != null) {
             SettingsItem equalizerItem = new SettingsItem(ResourcesCompat.getDrawable(getResources(),
@@ -208,6 +211,7 @@ public class SettingsFragment extends ArchitectFragment {
     }
 
     private void initTheme() {
+        mThemesRoot.setVisibility(View.VISIBLE);
         mThemeContextSwitch.setOnClickListener(view1 -> {
             Theme.switchThemeContext();
         });
@@ -249,12 +253,25 @@ public class SettingsFragment extends ArchitectFragment {
         });
     }
 
+    public boolean isPressBack() {
+        return mSettingsMenu.getVisibility() == View.GONE;
+    }
+
     public boolean pressBack() {
+        if (true) {
+            return false;
+        }
         mThemesRoot.setVisibility(View.GONE);
         if (mSettingsMenu.getVisibility() == View.GONE) {
             mSettingsMenu.setVisibility(View.VISIBLE);
             return true;
         }
         return false;
+    }
+
+    private SettingsAdapter.OnItemClickListener onItemClickListener;
+
+    public void setOnItemClickListener(SettingsAdapter.OnItemClickListener onItemClickListener) {
+        this.onItemClickListener = onItemClickListener;
     }
 }

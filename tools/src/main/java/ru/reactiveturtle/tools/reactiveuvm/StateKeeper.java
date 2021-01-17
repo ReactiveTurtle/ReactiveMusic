@@ -85,9 +85,10 @@ public class StateKeeper {
 
         public void unsubscribe() {
             stateKeeper.unsubscribe(this);
-            callback = null;
             stateKeeper = null;
             view = null;
+            methodName = null;
+            paramType = null;
         }
 
         public interface Callback {
@@ -95,26 +96,27 @@ public class StateKeeper {
         }
 
         public Binder call() {
-            new Handler(Looper.getMainLooper()).post(() -> {
-                try {
-                    if (view != null && methodName != null && paramType != null) {
-                        Method method = view.getClass().getMethod(methodName, paramType);
-                        method.invoke(view, stateKeeper.state);
-                    }
-                    if (callback != null) {
-                        callback.onInvoke(view, stateKeeper.state);
-                    }
-                } catch (NoSuchMethodException e) {
-                    e.printStackTrace();
-                    throw new IllegalStateException();
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                    throw new IllegalStateException();
-                } catch (InvocationTargetException e) {
-                    e.printStackTrace();
-                    throw new IllegalStateException();
+            try {
+                if (view != null && methodName != null && paramType != null) {
+                    Method method = view.getClass().getMethod(methodName, paramType);
+                    method.invoke(view, stateKeeper.state);
                 }
-            });
+                if (callback != null) {
+                    System.out.println();
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        callback.onInvoke(view, stateKeeper.state);
+                    });
+                }
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+                throw new IllegalStateException();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+                throw new IllegalStateException();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+                throw new IllegalStateException();
+            }
             return this;
         }
     }

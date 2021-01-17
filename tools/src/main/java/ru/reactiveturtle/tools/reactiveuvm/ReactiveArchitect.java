@@ -6,14 +6,15 @@ import java.util.Objects;
 public class ReactiveArchitect {
 
     private static HashMap<String, StateKeeper> states = new HashMap<>();
+
     public static StateKeeper createState(String name, Object def) {
-        StateKeeper stateKeeper =  new StateKeeper(def);
+        StateKeeper stateKeeper = new StateKeeper(def);
         states.put(name, stateKeeper);
         return stateKeeper;
     }
 
     public static StateKeeper getStateKeeper(String name) {
-        return states.get(name);
+        return (StateKeeper) states.get(name);
     }
 
     public static void changeState(String name, Object state) {
@@ -23,10 +24,11 @@ public class ReactiveArchitect {
     }
 
     /*
-    * Bridge String naming rule (SrcObject)To(DstObject)
-    * Bridge variable naming rule SrcObject_To_DstObject
-    * */
+     * Bridge String naming rule (SrcObject)To(DstObject)
+     * Bridge variable naming rule SrcObject_To_DstObject
+     * */
     private static HashMap<String, Bridge> bridges = new HashMap<>();
+
     public static Bridge createBridge(String name) {
         Bridge bridge = new Bridge(name);
         bridges.put(name, bridge);
@@ -43,10 +45,6 @@ public class ReactiveArchitect {
         return (StringBridge) bridges.get(name);
     }
 
-    public static Bridge getBridge(String name) {
-        return bridges.get(name);
-    }
-
     public static IntBridge createIntBridge(String name) {
         IntBridge bridge = new IntBridge(name);
         bridges.put(name, bridge);
@@ -55,6 +53,10 @@ public class ReactiveArchitect {
 
     public static IntBridge getIntBridge(String name) {
         return (IntBridge) bridges.get(name);
+    }
+
+    public static Bridge getBridge(String name) {
+        return bridges.get(name);
     }
 
     public static void removeBridge(String name) {

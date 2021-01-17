@@ -245,10 +245,6 @@ public class MusicFragment extends ArchitectFragment {
         mTrackDuration.setBackgroundColor(color);
     }
 
-    public void repeatTrack(boolean isRepeat) {
-        mLoopingTrack.setChecked(isRepeat);
-    }
-
     @OnClick(R.id.playerLoopingTrack)
     protected void switchTrackLooping() {
         PlayerModel.setTrackLooping(!PlayerModel.isTrackLooping());

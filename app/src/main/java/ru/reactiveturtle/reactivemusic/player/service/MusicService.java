@@ -11,8 +11,11 @@ import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.ParcelFileDescriptor;
+import android.provider.MediaStore;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -20,6 +23,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
@@ -67,13 +72,7 @@ public class MusicService extends ArchitectService {
 
         mNotificationManager = (NotificationManager) getApplicationContext().getSystemService(NOTIFICATION_SERVICE);
 
-        playerManager = new PlayerManager(repository);
-        if (repository.getCurrentTrackPath() == null) {
-            List<String> paths = Helper.getAllTracksPathsInfo(this);
-            if (paths.size() > 0) {
-                repository.setCurrentTrackPath(paths.get(0));
-            }
-        }
+        playerManager = new PlayerManager(repository, this);
 
         mPlayerReceiver = new MusicBroadcastReceiver();
         registerReceiver(mPlayerReceiver, new IntentFilter(getClass().getName()));
@@ -97,13 +96,14 @@ public class MusicService extends ArchitectService {
             if (!PlayerModel.isTrackLooping()) {
                 MusicModel.setCurrentTrackProgress(mMusicPlayer.getCurrentPosition());
                 MusicModel.setCurrentTrackPath(playerManager.getNextTrack());
+            } else {
+                //Костыль
+                mMusicPlayer.start();
             }
         });
 
-        Theme.init(getResources(), repository.getThemeColorSet(), repository.isThemeContextDark());
-
         MusicModel.setCurrentTrackPath(playerManager.getLastTrackPath());
-        Helper.goToMainLooper(() -> ReactiveArchitect.getBridge(Bridges.MusicService_To_Init).pull());
+        ReactiveArchitect.getBridge(Bridges.MusicService_To_Init).pull();
     }
 
     @Override
@@ -146,8 +146,9 @@ public class MusicService extends ArchitectService {
                 ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_ALBUM).subscribe((view, value) ->
                         showPlayer(MusicModel.getMusicInfo())
                 ),
-                ReactiveArchitect.getStateKeeper(MusicModel.IS_TRACK_PLAY).subscribe((view, value) ->
-                        showPlayer(MusicModel.getMusicInfo()))
+                ReactiveArchitect.getStateKeeper(MusicModel.IS_TRACK_PLAY).subscribe((view, value) -> {
+                    showPlayer(MusicModel.getMusicInfo());
+                })
         ));
     }
 
@@ -173,9 +174,7 @@ public class MusicService extends ArchitectService {
         Intent receiverIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 1, receiverIntent, 0);
         mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-            mAudioManager.registerMediaButtonEventReceiver(pendingIntent);
-        }
+        mAudioManager.registerMediaButtonEventReceiver(pendingIntent);
         return START_NOT_STICKY;
     }
 
@@ -194,12 +193,12 @@ public class MusicService extends ArchitectService {
             String event = "";
             switch (focusChange) {
                 case AudioManager.AUDIOFOCUS_LOSS:
-                    ReactiveArchitect.changeState("IS_TRACK_PLAY", false);
+                    ReactiveArchitect.changeState(MusicModel.IS_TRACK_PLAY, false);
                     event = "AUDIOFOCUS_LOSS";
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                     event = "AUDIOFOCUS_LOSS_TRANSIENT";
-                    ReactiveArchitect.changeState("IS_TRACK_PLAY", false);
+                    ReactiveArchitect.changeState(MusicModel.IS_TRACK_PLAY, false);
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                     event = "AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK";
@@ -208,7 +207,7 @@ public class MusicService extends ArchitectService {
                 case AudioManager.AUDIOFOCUS_GAIN:
                     event = "AUDIOFOCUS_GAIN";
                     mMusicPlayer.setVolume(1f, 1f);
-                    ReactiveArchitect.changeState("IS_TRACK_PLAY", true);
+                    ReactiveArchitect.changeState(MusicModel.IS_TRACK_PLAY, true);
                     break;
             }
             System.out.println(label + " onAudioFocusChange: " + event);
@@ -353,7 +352,14 @@ public class MusicService extends ArchitectService {
                 throw new IllegalStateException("Track progress updater is running. Stop it!");
             }
             mMusicPlayer.reset();
-            mMusicPlayer.setDataSource(path);
+
+            System.out.println(path);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                mMusicPlayer.setDataSource(this, Uri.parse(path));
+            } else {
+                mMusicPlayer.setDataSource(path);
+            }
+
             mMusicPlayer.prepareAsync();
             startTimer();
 

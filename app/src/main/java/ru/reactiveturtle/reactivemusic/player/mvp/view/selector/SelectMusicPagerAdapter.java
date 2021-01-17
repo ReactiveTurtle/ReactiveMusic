@@ -38,10 +38,6 @@ public class SelectMusicPagerAdapter extends FragmentStateAdapter {
         return c.cast(fragments.get(0));
     }
 
-    public <T> T getFilesFragment(Class<T> c) {
-        return c.cast(fragments.get(1));
-    }
-
     @StringRes
     public int getPageTitle(int position) {
         switch (position) {

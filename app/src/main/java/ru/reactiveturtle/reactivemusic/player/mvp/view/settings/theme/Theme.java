@@ -65,7 +65,8 @@ public class Theme {
     }
 
     public static void switchThemeContext() {
-        ReactiveArchitect.getStateKeeper(IS_DARK).changeState(!(Boolean) ReactiveArchitect.getStateKeeper(IS_DARK).getState());
+        ReactiveArchitect.getStateKeeper(IS_DARK).changeState(!
+                (Boolean) ReactiveArchitect.getStateKeeper(IS_DARK).getState());
     }
 
     public static boolean isDark() {

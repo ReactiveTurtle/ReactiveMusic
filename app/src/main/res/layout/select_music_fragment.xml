@@ -35,6 +35,8 @@
                     android:layout_height="?attr/actionBarSize"
                     android:background="@android:color/transparent"
                     app:tabIndicatorColor="#FFF"
+                    app:tabIndicatorFullWidth="true"
+                    app:tabIndicatorGravity="bottom"
                     app:tabSelectedTextColor="#FFF"
                     app:tabTextColor="#FFF">
 
@@ -43,11 +45,6 @@
                         android:layout_height="match_parent"
                         android:text="@string/music"
                         android:visibility="visible" />
-
-                    <com.google.android.material.tabs.TabItem
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:text="@string/files" />
                 </com.google.android.material.tabs.TabLayout>
             </androidx.appcompat.widget.Toolbar>
 

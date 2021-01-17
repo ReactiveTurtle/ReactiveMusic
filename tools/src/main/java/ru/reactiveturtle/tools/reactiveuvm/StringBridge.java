@@ -12,13 +12,12 @@ public class StringBridge extends Bridge {
         return this;
     }
 
-    public void pull(String param) {
-        if (puller != null) {
-            puller.onPull(param);
-        }
+    public StringBridge pull(String value) {
+        puller.onPull(value);
+        return this;
     }
 
     public interface Puller {
-        void onPull(String param);
+        void onPull(String string);
     }
 }

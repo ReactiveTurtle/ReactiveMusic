@@ -22,10 +22,10 @@ public class Permissions {
     }
 
     public static boolean hasExternalStorage(Context context) {
-        return hasSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        return hasSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE);
     }
 
     public static void requestExternalStorage(Activity activity) {
-        requestPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE, 0);
+        requestPermission(activity, Manifest.permission.READ_EXTERNAL_STORAGE, 0);
     }
 }

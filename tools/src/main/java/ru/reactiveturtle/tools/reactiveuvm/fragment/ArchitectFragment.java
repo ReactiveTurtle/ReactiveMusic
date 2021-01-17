@@ -17,17 +17,34 @@ import ru.reactiveturtle.tools.reactiveuvm.StateKeeper;
 public abstract class ArchitectFragment extends Fragment {
     private List<StateKeeper.Binder> binders = new ArrayList<>();
     private List<Bridge> bridges = new ArrayList<>();
+    private boolean isFirstResume = false;
+    private boolean isStopped = false;
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         onInitializeBinders(binders);
         onInitializeBridges(bridges);
+        isFirstResume = true;
     }
 
     protected abstract void onInitializeBinders(List<StateKeeper.Binder> container);
 
     protected abstract void onInitializeBridges(List<Bridge> container);
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (isFirstResume) {
+            isFirstResume = false;
+            return;
+        }
+        if (isStopped) {
+            isStopped = false;
+            onInitializeBinders(binders);
+            onInitializeBridges(bridges);
+        }
+    }
 
     @Override
     public void onStop() {
@@ -39,6 +56,7 @@ public abstract class ArchitectFragment extends Fragment {
             ReactiveArchitect.removeBridge(bridge.getName());
         }
         bridges.clear();
+        isStopped = true;
         super.onStop();
     }
 }

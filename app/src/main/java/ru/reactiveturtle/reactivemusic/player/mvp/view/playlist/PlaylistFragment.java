@@ -157,7 +157,11 @@ public class PlaylistFragment extends ArchitectFragment {
                 ReactiveArchitect.createStringBridge(Bridges.FindTrack_To_PlaylistScrollToTrack)
                         .connect(param -> scrollToTrack(mMusicListAdapter.indexOf(param))),
                 ReactiveArchitect.createStringBridge(Bridges.RenameDialog_To_RenamePlaylistList)
-                        .connect(param -> renamePlaylist(PlayerModel.getPlaylistActionsPlaylistName(), param))
+                        .connect(param -> renamePlaylist(PlayerModel.getPlaylistActionsPlaylistName(), param)),
+                ReactiveArchitect.createStringBridge(Bridges.SelectMusicListFragment_To_AddTrackPlaylist)
+                        .connect(this::addTrack),
+                ReactiveArchitect.createStringBridge(Bridges.SelectMusicListFragment_To_RemoveTrackPlaylist)
+                        .connect(this::removeTrack)
         ));
     }
 

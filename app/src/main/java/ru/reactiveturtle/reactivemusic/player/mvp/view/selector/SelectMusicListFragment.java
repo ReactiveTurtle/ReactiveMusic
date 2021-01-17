@@ -28,6 +28,8 @@ import ru.reactiveturtle.reactivemusic.Helper;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
+import ru.reactiveturtle.reactivemusic.player.service.Bridges;
+import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
 import ru.reactiveturtle.tools.widget.wait.WaitDailog;
 
 public class SelectMusicListFragment extends Fragment {
@@ -38,6 +40,7 @@ public class SelectMusicListFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
     }
 
     @BindView(R.id.selectMusicAddAll)
@@ -50,10 +53,9 @@ public class SelectMusicListFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.select_music_list_fragment, container);
         ButterKnife.bind(this, view);
-
         LinearLayoutManager llm = new LinearLayoutManager(getContext());
-        mRecyclerView.setLayoutManager(llm);
         mMusicListAdapter = new SelectMusicListAdapter(llm);
+        mRecyclerView.setLayoutManager(llm);
         mRecyclerView.setAdapter(mMusicListAdapter);
         mRecyclerView.setItemAnimator(null);
         if (getContext() != null) {
@@ -73,6 +75,7 @@ public class SelectMusicListFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        ReactiveArchitect.getBridge(Bridges.SelectMusicListFragment_To_ViewLoaded).pull();
         updateTheme();
     }
 

@@ -1,12 +1,5 @@
 package ru.reactiveturtle.reactivemusic.player.mvp.view;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.view.GravityCompat;
-import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.viewpager2.widget.ViewPager2;
-
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -35,14 +28,21 @@ import android.view.animation.AnimationSet;
 import android.view.animation.TranslateAnimation;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.viewpager2.widget.ViewPager2;
+
 import com.google.android.gms.ads.MobileAds;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -51,19 +51,17 @@ import ru.reactiveturtle.reactivemusic.Permissions;
 import ru.reactiveturtle.reactivemusic.R;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
 import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerModel;
+import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerRepository;
+import ru.reactiveturtle.reactivemusic.player.mvp.view.selector.SelectMusicView;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ColorSet;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
-import ru.reactiveturtle.reactivemusic.player.mvp.model.PlayerRepository;
 import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.ThemeHelper;
 import ru.reactiveturtle.reactivemusic.player.service.Bridges;
-import ru.reactiveturtle.reactivemusic.player.service.MusicBroadcastReceiver;
 import ru.reactiveturtle.reactivemusic.player.service.MusicModel;
 import ru.reactiveturtle.reactivemusic.player.service.MusicService;
-import ru.reactiveturtle.tools.reactiveuvm.Bridge;
 import ru.reactiveturtle.tools.reactiveuvm.ReactiveArchitect;
-import ru.reactiveturtle.tools.reactiveuvm.StateKeeper;
-import ru.reactiveturtle.tools.widget.text.TextDialog;
 import ru.reactiveturtle.tools.widget.selection.SelectionDialog;
+import ru.reactiveturtle.tools.widget.text.TextDialog;
 import ru.reactiveturtle.tools.widget.warning.MessageDialog;
 
 public class PlayerActivity extends AppCompatActivity {
@@ -85,11 +83,21 @@ public class PlayerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //enableScreenMode();
+        if (Permissions.hasExternalStorage(this)) {
+            create();
+        } else {
+            Permissions.requestExternalStorage(this);
+        }
+    }
+
+    private void create() {
         mRepository = new PlayerRepository(this);
         if (ReactiveArchitect.getBridge(Bridges.MusicService_To_Init) == null) {
             Theme.init(getResources(), mRepository.getThemeColorSet(), mRepository.isThemeContextDark());
             PlayerModel.initialize(mRepository);
-            ReactiveArchitect.createBridge(Bridges.MusicService_To_Init).connect(this::init);
+            ReactiveArchitect.createBridge(Bridges.MusicService_To_Init).connect(() -> {
+                runOnUiThread(this::init);
+            });
             startService(new Intent(this, MusicService.class));
         } else {
             init();
@@ -118,20 +126,12 @@ public class PlayerActivity extends AppCompatActivity {
 
         setSupportActionBar(mToolbar);
         mToolbar.setNavigationOnClickListener(view -> {
-            if (PlayerModel.getSelectedPage() == 1
-                    && PlayerModel.getOpenPlaylistName() != null) {
-                PlayerModel.setOpenPlaylistName(null);
-                PlayerModel.setPlaylists(mRepository.getPlaylists());
-                showTitle(R.string.playlists);
-                hideToolbarArrow();
-            } else {
-                super.onBackPressed();
-            }
+            onBackPressed();
         });
 
         initPlayerViewPager();
 
-        ReactiveArchitect.createStringBridge(Bridges.PlaylistAddClick_To_ShowCreateNameDialog).connect(() -> {
+        ReactiveArchitect.createStringBridge(Bridges.PlaylistAddClick_To_ShowCreateNameDialog).connect((value) -> {
             String openPlaylist = PlayerModel.getOpenPlaylistName();
             if (openPlaylist != null) {
                 showMusicSelector(mRepository.getPlaylist(openPlaylist));
@@ -160,6 +160,10 @@ public class PlayerActivity extends AppCompatActivity {
                 .connect(() -> {
                     goToCurrentTrack(null, MusicModel.getCurrentTrackPath());
                 });
+        ReactiveArchitect.createStringBridge(Bridges.SettingsClick_To_UpdateToolbarArrow)
+                .connect(param -> {
+                    showToolbarArrow();
+                });
 
 
         ReactiveArchitect.getStateKeeper(PlayerModel.PLAYLIST_ACTIONS_PLAYLIST_NAME).subscribe((view, value) -> {
@@ -178,25 +182,74 @@ public class PlayerActivity extends AppCompatActivity {
         ReactiveArchitect.getStateKeeper(Theme.COLOR_SET).subscribe((view, value) -> {
             updateTheme();
         }).call();
-        ReactiveArchitect.getStateKeeper(Theme.IS_DARK).subscribe((view, value) -> updateThemeContext()).call();
+        ReactiveArchitect.getStateKeeper(Theme.IS_DARK).subscribe((view, value) -> {
+            mRepository.setThemeContextDark((Boolean) value);
+            updateThemeContext();
+        }).call();
         ReactiveArchitect.getStateKeeper(MusicModel.CURRENT_TRACK_COVER).subscribe((view, value) -> updateWindowBackground());
     }
 
+    private SelectMusicView selectMusicView;
+
     private void initSelectMusicView() {
+        selectMusicView = new SelectMusicView(this);
         Helper.initSelectMusic(this, mDrawerLayout);
-        updateThemeContext();
-        updateTheme();
+        ReactiveArchitect.createBridge(Bridges.SelectMusicListFragment_To_ViewLoaded)
+                .connect(this::bindMusicLists);
+        ReactiveArchitect.createStringBridge(Bridges.SelectMusicListFragment_To_AddTrack).connect(param -> {
+            String playlistName = Objects.requireNonNull(PlayerModel.getOpenPlaylistName());
+            mRepository.addTrack(playlistName, param);
+        });
+        ReactiveArchitect.createStringBridge(Bridges.SelectMusicListFragment_To_RemoveTrack).connect(param -> {
+            String playlistName = Objects.requireNonNull(PlayerModel.getOpenPlaylistName());
+            mRepository.removeTrack(playlistName, param);
+        });
+        mDrawerLayout.addDrawerListener(new DrawerLayout.DrawerListener() {
+            @Override
+            public void onDrawerSlide(@NonNull View drawerView, float slideOffset) {
+
+            }
+
+            @Override
+            public void onDrawerOpened(@NonNull View drawerView) {
+                selectMusicView.getSelectMusicList().setSelectedItems(
+                        mRepository.getPlaylist(PlayerModel.getOpenPlaylistName()));
+                selectMusicView.getSelectMusicList().getListAdapter().notifyDataSetChanged();
+            }
+
+            @Override
+            public void onDrawerClosed(@NonNull View drawerView) {
+
+            }
+
+            @Override
+            public void onDrawerStateChanged(int newState) {
+
+            }
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        PlayerModel.setActivityActive(true);
+        if (Permissions.hasExternalStorage(this)) {
+            PlayerModel.setActivityActive(true);
+            if (MusicModel.isInitialized()) {
+                PlayerModel.setPlay(MusicModel.isTrackPlay());
+            }
+            if (mPlayerPagerAdapter != null) {
+                mPlayerPagerAdapter.notifyDataSetChanged();
+            }
+        } else {
+            Permissions.requestExternalStorage(this);
+        }
     }
 
     @Override
     protected void onPause() {
-        PlayerModel.setActivityActive(false);
+        if (Permissions.hasExternalStorage(this)) {
+            PlayerModel.setActivityActive(false);
+        }
         super.onPause();
     }
 
@@ -217,6 +270,9 @@ public class PlayerActivity extends AppCompatActivity {
                 PlayerModel.setPlaylists(mRepository.getPlaylists());
                 showTitle(R.string.playlists);
                 hideToolbarArrow();
+            } else if (PlayerModel.getSelectedPage() == 3 &&
+                    mPlayerPagerAdapter.getSettingsFragment().pressBack()) {
+                hideToolbarArrow();
             } else {
                 super.onBackPressed();
             }
@@ -227,6 +283,7 @@ public class PlayerActivity extends AppCompatActivity {
         mPlayerViewPager.setOffscreenPageLimit(4);
         mPlayerPagerAdapter = new PlayerPagerAdapter(this);
         mPlayerViewPager.setAdapter(mPlayerPagerAdapter);
+        mDrawerLayout.setVisibility(View.VISIBLE);
         mPlayerViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
@@ -253,9 +310,14 @@ public class PlayerActivity extends AppCompatActivity {
                     } else {
                         hideToolbarArrow();
                     }
-                } else {
+                } else if (position == 3) {
+                    if (mPlayerPagerAdapter.getSettingsFragment().isPressBack()) {
+                        //showToolbarArrow();
+                    } else {
+                        hideToolbarArrow();
+                    }
+                } else
                     hideToolbarArrow();
-                }
             }
         });
         mBottomNavigationView.setOnNavigationItemSelectedListener(item -> {
@@ -275,9 +337,6 @@ public class PlayerActivity extends AppCompatActivity {
             }
             return true;
         });
-        if (getIntent().getIntExtra(Helper.ACTION_EXTRA, -1) == MusicBroadcastReceiver.SHOW_ACTIVITY) {
-            //goToCurrentTrack(mRepository.getCurrentPlaylist(), mRepository.getCurrentTrackPath());
-        }
     }
 
 
@@ -287,7 +346,11 @@ public class PlayerActivity extends AppCompatActivity {
         if (grantResults.length > 0) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (requestCode == 0) {
-                    startService(new Intent(this, MusicService.class));
+                    create();
+                }
+            } else {
+                if (requestCode == 0) {
+                    Permissions.requestExternalStorage(this);
                 }
             }
         }
@@ -371,16 +434,18 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     public void bindMusicLists() {
-
+        if (selectMusicView.getSelectMusicList().getListAdapter() != null) {
+            mPlayerPagerAdapter.getListFragment().bindLists(selectMusicView.getSelectMusicList().getListAdapter());
+        }
     }
 
     public void showMusicSelector(List<String> playlist) {
-        if (Permissions.hasSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+        if (Permissions.hasExternalStorage(this)) {
             if (!mDrawerLayout.isDrawerOpen(GravityCompat.END)) {
                 mDrawerLayout.openDrawer(GravityCompat.END);
             }
         } else {
-            Permissions.requestPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE, 1);
+            Permissions.requestPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE, 1);
         }
     }
 
@@ -566,8 +631,7 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     public void updateWindowBackground() {
-        if (!Theme.getDefaultAlbumCover().getBitmap().equals(
-                MusicModel.getCurrentTrackCover().getBitmap())) {
+        if (true) {
             Bitmap bitmap;
             Canvas canvas;
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -620,8 +684,10 @@ public class PlayerActivity extends AppCompatActivity {
                     Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY);
             paint.setColor(color);
             canvas.drawRect(0, 0, back.getWidth(), back.getHeight(), paint);
-            mDrawerLayout.setBackground(new BitmapDrawable(getResources(),
-                    Helper.fastblur(back, 1, 32)));
+            BitmapDrawable bitmapDrawable = new BitmapDrawable(getResources(),
+                    Helper.fastblur(back, 1, 32));
+            mDrawerLayout.setBackground(bitmapDrawable);
+            selectMusicView.updateBackground(new BitmapDrawable(getResources(), bitmapDrawable.getBitmap()));
         } else {
             mDrawerLayout.setBackground(new ColorDrawable(Theme.isDark() ?
                     Theme.CONTEXT_PRIMARY_LIGHT : Theme.CONTEXT_PRIMARY));
@@ -641,6 +707,7 @@ public class PlayerActivity extends AppCompatActivity {
         }
         updateBottomNavigationView();
         updateDialogs();
+        selectMusicView.updateTheme();
     }
 
     public void updateThemeContext() {
@@ -653,6 +720,7 @@ public class PlayerActivity extends AppCompatActivity {
         }
         updateBottomNavigationView();
         updateDialogs();
+        selectMusicView.updateThemeContext();
     }
 
     private void updateDialogs() {
@@ -694,11 +762,5 @@ public class PlayerActivity extends AppCompatActivity {
                         Color.blue(Theme.CONTEXT_NEGATIVE_PRIMARY))});
         mBottomNavigationView.setItemIconTintList(colorStateList);
         mBottomNavigationView.setItemTextColor(colorStateList);
-    }
-
-    private void sendIntent(int action) {
-        Intent intent = new Intent(MusicService.class.getName());
-        intent.putExtra(Helper.ACTION_EXTRA, action);
-        sendBroadcast(intent);
     }
 }

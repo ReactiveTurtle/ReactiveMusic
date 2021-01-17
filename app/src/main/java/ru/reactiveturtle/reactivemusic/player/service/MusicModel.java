@@ -17,6 +17,8 @@ public class MusicModel {
 
     public static final String IS_TRACK_PLAY = "IS_TRACK_PLAY";
 
+    private static boolean isInitialized = false;
+
     public static void initialize() {
         MusicInfo defaultMusicInfo = MusicInfo.getDefault();
         ReactiveArchitect.createState(CURRENT_TRACK_PATH, defaultMusicInfo.getPath());
@@ -28,6 +30,12 @@ public class MusicModel {
         ReactiveArchitect.createState(CURRENT_TRACK_COVER, Theme.getDefaultAlbumCoverCopy());
 
         ReactiveArchitect.createState(IS_TRACK_PLAY, false);
+
+        isInitialized = true;
+    }
+
+    public static boolean isInitialized() {
+        return isInitialized;
     }
 
     public static void setCurrentTrackPath(String path) {

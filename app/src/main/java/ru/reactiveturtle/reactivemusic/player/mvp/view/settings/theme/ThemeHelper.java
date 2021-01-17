@@ -155,7 +155,7 @@ public class ThemeHelper {
             float leftPadding = Math.round((canvas.getWidth() - bitmap.getWidth()) / 2f);
             float topPadding = Math.round((canvas.getHeight() - bitmap.getHeight()) / 2f);
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            paint.setColor(Color.WHITE);
+            paint.setColor(color);
             canvas.drawRect(leftPadding,
                     topPadding, result.getWidth() - leftPadding,
                     result.getHeight() - topPadding, paint);

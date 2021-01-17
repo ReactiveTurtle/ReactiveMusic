@@ -23,6 +23,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
@@ -54,6 +55,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 import ru.reactiveturtle.reactivemusic.player.Loaders;
 import ru.reactiveturtle.reactivemusic.player.MusicInfo;
@@ -69,28 +71,42 @@ public class Helper {
     @NonNull
     public static synchronized List<String> getAllTracksPathsInfo(@NonNull Context context) {
         if (allTracksPathsDestroyTimeout == null) {
-            String[] proj = {MediaStore.Audio.Media.DATA};
-            Uri uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-            CursorLoader loader = new CursorLoader(context, uri, proj, MediaStore.Audio.Media.IS_MUSIC + " = 1",
-                    null, null);
-            Cursor cursor = loader.loadInBackground();
+            Uri collection;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
+            } else {
+                collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+            }
+            String[] proj = {Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
+                    MediaStore.Audio.Media._ID :
+                    MediaStore.Audio.Media.DATA};
+            Cursor cursor = context.getContentResolver().query(collection, proj,
+                    MediaStore.Audio.Media.IS_MUSIC + " = 1", null, null);
             List<String> tracks = new ArrayList<>();
             if (cursor != null) {
                 if (cursor.moveToFirst()) {
+                    int idColumn;
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID);
+                    } else {
+                        idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
+                    }
                     do {
-                        int pathColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
-
-                        String path = cursor.getString(pathColumnIndex);
-                        String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                                Helper.getPathFormat(path));
-                        if (mimeType != null) {
-                            if (mimeType.equals("audio/mpeg") ||
-                                    mimeType.equals("audio/vnd.wave")) {
-                                tracks.add(path);
-                            }
+                        String path;
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                            long id = cursor.getLong(idColumn);
+                            path = ContentUris.withAppendedId(
+                                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString();
+                            System.out.println(path);
+                        } else {
+                            path = cursor.getString(idColumn);
                         }
+                        tracks.add(path);
                     } while (cursor.moveToNext());
                 }
+            }
+            if (cursor != null) {
+                cursor.close();
             }
             allTracksPaths.clear();
             allTracksPaths.addAll(tracks);
@@ -113,13 +129,24 @@ public class Helper {
     }
 
     public static Uri getArtUriFromMusicFile(Context context, String filePath) {
-        final Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+        String trackPath = filePath;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            trackPath = filePath.substring(filePath.lastIndexOf("/") + 1);
+        }
+        Uri collection;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
+        } else {
+            collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+        }
         final String[] cursor_cols = {MediaStore.Audio.Media.ALBUM_ID};
 
         final String where = MediaStore.Audio.Media.IS_MUSIC + "=1 AND "
-                + MediaStore.Audio.Media.DATA + "=?";
-        final Cursor cursor = context.getApplicationContext().getContentResolver().query(uri, cursor_cols, where,
-                new String[]{filePath}, null);
+                + (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
+                MediaStore.Audio.Media._ID :
+                MediaStore.Audio.Media.DATA) + "=?";
+        final Cursor cursor = context.getApplicationContext().getContentResolver().query(collection, cursor_cols, where,
+                new String[]{trackPath}, null);
         /*
          * If the cusor count is greater than 0 then parse the data and get the art id.
          */
@@ -301,8 +328,7 @@ public class Helper {
             }
         });
 
-        DisplayMetrics dm = new DisplayMetrics();
-        activity.getWindowManager().getDefaultDisplay().getMetrics(dm);
+        DisplayMetrics dm = activity.getResources().getDisplayMetrics();
 
         NavigationView view = activity.findViewById(R.id.playerMusicNavigationView);
         DrawerLayout.LayoutParams layoutParams = (DrawerLayout.LayoutParams) view.getLayoutParams();

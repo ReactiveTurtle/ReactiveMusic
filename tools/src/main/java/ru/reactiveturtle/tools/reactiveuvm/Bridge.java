@@ -1,7 +1,6 @@
 package ru.reactiveturtle.tools.reactiveuvm;
 
 public class Bridge {
-
     private Puller puller;
     private String name;
 
@@ -18,10 +17,6 @@ public class Bridge {
         if (puller != null) {
             puller.onPull();
         }
-    }
-
-    public StringBridge connect(StringBridge.Puller puller) {
-        return (StringBridge) this;
     }
 
     public String getName() {

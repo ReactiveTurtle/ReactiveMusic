@@ -1,6 +1,7 @@
 package ru.reactiveturtle.reactivemusic.player;
 
 import android.annotation.SuppressLint;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -20,6 +21,7 @@ import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.provider.MediaStore;
 import android.webkit.MimeTypeMap;
 
@@ -51,31 +53,7 @@ public abstract class Loaders {
         @NonNull
         @Override
         public List<String> loadInBackground() {
-            String[] proj = {MediaStore.Audio.Media.DATA};
-            Uri uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-            Cursor cursor = getContext().getApplicationContext().getContentResolver().query(uri, proj,
-                    MediaStore.Audio.Media.IS_MUSIC + " = 1",
-                    null, null);
-            List<String> tracks = new ArrayList<>();
-            if (cursor != null) {
-                if (cursor.moveToFirst()) {
-                    do {
-                        int pathColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
-
-                        String path = cursor.getString(pathColumnIndex);
-                        String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                                Helper.getPathFormat(path));
-                        if (mimeType != null) {
-                            if (mimeType.equals("audio/mpeg") ||
-                                    mimeType.equals("audio/vnd.wave")) {
-                                tracks.add(path);
-                            }
-                        }
-                    } while (cursor.moveToNext());
-                }
-                cursor.close();
-            }
-            return tracks;
+            return Helper.getAllTracksPathsInfo(getContext());
         }
     }
 
@@ -96,11 +74,12 @@ public abstract class Loaders {
                         getArtUriFromMusicFile(getContext(), trackPath), 256);
             } catch (FileNotFoundException e) {
                 try {
-                    if (!new File(trackPath).exists()) {
-                        return null;
-                    }
                     MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                    mmr.setDataSource(trackPath);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        mmr.setDataSource(getContext(), Uri.parse(trackPath));
+                    } else {
+                        mmr.setDataSource(trackPath);
+                    }
                     byte[] data = mmr.getEmbeddedPicture();
                     mmr.release();
                     if (data != null) {
@@ -131,25 +110,38 @@ public abstract class Loaders {
         public MusicInfoLoader(@NonNull Context context, @NonNull String trackPath) {
             super(context);
             Objects.requireNonNull(trackPath);
-            this.trackPath = trackPath;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                this.trackPath = trackPath.substring(trackPath.lastIndexOf("/") + 1);
+            } else {
+                this.trackPath = trackPath;
+            }
         }
 
         @Nullable
         public MusicInfo doInBackground(Void... voids) {
-            String[] proj = {MediaStore.Audio.Media.DATA,
-                    MediaStore.Audio.Media.ALBUM,
+            String[] proj = {Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
+                    MediaStore.Audio.Media._ID :
+                    MediaStore.Audio.Media.DATA,
+                    MediaStore.Audio.AudioColumns.ALBUM,
                     MediaStore.Audio.Media.ARTIST,
                     MediaStore.Audio.Media.TITLE};
-            Uri uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+            Uri collection;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
+            } else {
+                collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+            }
 
-            Cursor cursor = getContext().getContentResolver().query(uri, proj,
+            Cursor cursor = getContext().getContentResolver().query(collection, proj,
                     MediaStore.Audio.Media.IS_MUSIC + " = 1 AND "
-                            + MediaStore.Audio.Media.DATA + "=?",
+                            + (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
+                            MediaStore.Audio.Media._ID :
+                            MediaStore.Audio.Media.DATA) + "=?",
                     new String[]{trackPath}, null);
             MusicInfo musicInfo = null;
             if (cursor != null && cursor.moveToFirst()) {
                 try {
-                    musicInfo = getMusicInfo(cursor);
+                    musicInfo = getMusicInfo(getContext(), cursor);
                 } catch (SQLiteException e) {
                     e.printStackTrace();
                 }
@@ -170,18 +162,31 @@ public abstract class Loaders {
             super.onCancelled();
         }
 
-        public static MusicInfo getMusicInfo(Cursor cursor) {
-            int pathColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
+        public static MusicInfo getMusicInfo(Context context, Cursor cursor) {
+            int pathColumnIndex = cursor.getColumnIndexOrThrow(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
+                    MediaStore.Audio.Media._ID :
+                    MediaStore.Audio.Media.DATA);
             int albumColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM);
             int artistColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
             int titleColumnIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE);
 
-            String path = cursor.getString(pathColumnIndex);
-            if (!new File(path).exists()) {
+            String path;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                long id = cursor.getLong(pathColumnIndex);
+                path = ContentUris.withAppendedId(
+                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString();
+            } else {
+                path = cursor.getString(pathColumnIndex);
+            }
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q && !new File(path).exists()) {
                 return null;
             }
             MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-            mmr.setDataSource(path);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                mmr.setDataSource(context, Uri.parse(path));
+            } else {
+                mmr.setDataSource(path);
+            }
             int trackDuration = 0;
             try {
                 trackDuration = Integer.parseInt(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));

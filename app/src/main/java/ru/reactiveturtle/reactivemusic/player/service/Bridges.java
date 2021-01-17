@@ -15,4 +15,10 @@ public class Bridges {
     public static final String RenameDialog_To_RenamePlaylistList = "(RenameDialog)To(RenamePlaylistList)";
     public static final String MusicService_To_Init = "(MusicService)To(Init)";
     public static final String MusicBroadcast_To_CloseService = "(MusicBroadcast)To(CloseService)";
+    public static final String SettingsClick_To_UpdateToolbarArrow = "(SettingsClick)To(UpdateToolbarArrow)";
+    public static final String SelectMusicListFragment_To_ViewLoaded = "(SelectMusicListFragment)To(ViewLoaded)";
+    public static final String SelectMusicListFragment_To_AddTrack = "(SelectMusicListFragment)To(AddTrack)";
+    public static final String SelectMusicListFragment_To_RemoveTrack = "(SelectMusicListFragment)To(RemoveTrack)";
+    public static final String SelectMusicListFragment_To_AddTrackPlaylist = "(SelectMusicListFragment)To(AddTrackPlaylist)";
+    public static final String SelectMusicListFragment_To_RemoveTrackPlaylist = "(SelectMusicListFragment)To(RemoveTrackPlaylist)";
 }
