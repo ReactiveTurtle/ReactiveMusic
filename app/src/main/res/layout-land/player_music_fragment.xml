@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context=".player.mvp.view.PlayerActivity">
+    tools:context=".view.PlayerActivity">
 
     <LinearLayout
         android:id="@+id/playerTrackArtistAlbumContainer"
@@ -125,8 +125,8 @@
 
     <Button
         android:id="@+id/playerPlayPause"
-        android:layout_width="@dimen/player_default_button_size"
-        android:layout_height="@dimen/player_default_button_size"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
         android:layout_marginBottom="16dp"
         android:button="@null"
         app:backgroundTint="@null"

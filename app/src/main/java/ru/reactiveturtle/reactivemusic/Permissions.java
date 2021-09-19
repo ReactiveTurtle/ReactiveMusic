@@ -10,8 +10,6 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import ru.reactiveturtle.reactivemusic.player.mvp.view.PlayerActivity;
-
 public class Permissions {
     public static void requestPermission(Activity activity, String permission, int requestCode) {
         ActivityCompat.requestPermissions(activity, new String[]{permission}, requestCode);

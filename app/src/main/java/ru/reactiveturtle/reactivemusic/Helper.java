@@ -44,196 +44,17 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.navigation.NavigationView;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.TimeUnit;
-
-import ru.reactiveturtle.reactivemusic.player.Loaders;
-import ru.reactiveturtle.reactivemusic.player.MusicInfo;
-import ru.reactiveturtle.reactivemusic.player.mvp.view.settings.theme.Theme;
-import ru.reactiveturtle.reactivemusic.player.service.MusicService;
 
 public class Helper {
     public static final String ACTION_EXTRA = "action_extra";
-
-    private static final List<String> allTracksPaths = new ArrayList<>();
-    private static Timer allTracksPathsDestroyTimeout;
-
-    @NonNull
-    public static synchronized List<String> getAllTracksPathsInfo(@NonNull Context context) {
-        if (allTracksPathsDestroyTimeout == null) {
-            Uri collection;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
-            } else {
-                collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-            }
-            String[] proj = {Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
-                    MediaStore.Audio.Media._ID :
-                    MediaStore.Audio.Media.DATA};
-            Cursor cursor = context.getContentResolver().query(collection, proj,
-                    MediaStore.Audio.Media.IS_MUSIC + " = 1", null, null);
-            List<String> tracks = new ArrayList<>();
-            if (cursor != null) {
-                if (cursor.moveToFirst()) {
-                    int idColumn;
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                        idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID);
-                    } else {
-                        idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA);
-                    }
-                    do {
-                        String path;
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                            long id = cursor.getLong(idColumn);
-                            path = ContentUris.withAppendedId(
-                                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString();
-                            System.out.println(path);
-                        } else {
-                            path = cursor.getString(idColumn);
-                        }
-                        tracks.add(path);
-                    } while (cursor.moveToNext());
-                }
-            }
-            if (cursor != null) {
-                cursor.close();
-            }
-            allTracksPaths.clear();
-            allTracksPaths.addAll(tracks);
-        }
-        if (allTracksPathsDestroyTimeout != null) {
-            allTracksPathsDestroyTimeout.cancel();
-        }
-        allTracksPathsDestroyTimeout = new Timer();
-        allTracksPathsDestroyTimeout.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                allTracksPathsDestroyTimeout = null;
-            }
-        }, 60000);
-        return Collections.unmodifiableList(allTracksPaths);
-    }
-
-    public static String getPathFormat(@NonNull String path) {
-        return path.substring(path.lastIndexOf(".") + 1);
-    }
-
-    public static Uri getArtUriFromMusicFile(Context context, String filePath) {
-        String trackPath = filePath;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            trackPath = filePath.substring(filePath.lastIndexOf("/") + 1);
-        }
-        Uri collection;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
-        } else {
-            collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        }
-        final String[] cursor_cols = {MediaStore.Audio.Media.ALBUM_ID};
-
-        final String where = MediaStore.Audio.Media.IS_MUSIC + "=1 AND "
-                + (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
-                MediaStore.Audio.Media._ID :
-                MediaStore.Audio.Media.DATA) + "=?";
-        final Cursor cursor = context.getApplicationContext().getContentResolver().query(collection, cursor_cols, where,
-                new String[]{trackPath}, null);
-        /*
-         * If the cusor count is greater than 0 then parse the data and get the art id.
-         */
-        if (cursor != null && cursor.getCount() > 0) {
-            cursor.moveToFirst();
-            long albumId = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID));
-
-            Uri sArtworkUri = Uri.parse("content://media/external/audio/albumart");
-            Uri albumArtUri = ContentUris.withAppendedId(sArtworkUri, albumId);
-            cursor.close();
-            return albumArtUri;
-        }
-        return Uri.EMPTY;
-    }
-
-    public static BitmapDrawable getDrawable(ContentResolver contentResolver, Uri uri, int iconSize) throws FileNotFoundException {
-        InputStream inputStream = contentResolver.openInputStream(uri);
-        Drawable drawable = null;
-        try {
-            drawable = Drawable.createFromStream(inputStream, uri.toString());
-            inputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            drawable = new BitmapDrawable(Resources.getSystem(),
-                    Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888));
-        }
-        if (drawable == null) {
-            throw new FileNotFoundException();
-        }
-        return new BitmapDrawable(Resources.getSystem(), rectBitmap(drawableToBitmap(drawable)));
-    }
-
-    public static Bitmap rectBitmap(Bitmap src) {
-        DisplayMetrics dm = Resources.getSystem().getDisplayMetrics();
-        int size = Math.max(src.getWidth(), src.getHeight());
-        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        canvas.drawBitmap(src, (size - src.getWidth()) / 2f, (size - src.getHeight()) / 2f, paint);
-        return Bitmap.createScaledBitmap(bitmap, 512, 512, false);
-    }
-
-    @NonNull
-    public static Bitmap drawableToBitmap(@NonNull Drawable drawable) {
-        Bitmap bitmap = null;
-
-        if (drawable instanceof BitmapDrawable) {
-            BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
-            if (bitmapDrawable.getBitmap() != null) {
-                return bitmapDrawable.getBitmap();
-            }
-        }
-
-        if (drawable.getIntrinsicWidth() <= 0 || drawable.getIntrinsicHeight() <= 0) {
-            bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
-        } else {
-            bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-        }
-
-        Canvas canvas = new Canvas(bitmap);
-        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-        drawable.draw(canvas);
-        return bitmap;
-    }
-
-    public static BitmapDrawable getDefaultAlbumCover(Resources resources) {
-        int width = 512;
-        int height = 512;
-        Bitmap note = Bitmap.createScaledBitmap(BitmapFactory.decodeResource(resources, R.drawable.ic_note),
-                width / 2, height / 2, true);
-        Canvas canvas = new Canvas(note);
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(Color.WHITE);
-        paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
-        canvas.drawRect(0, 0, width, height, paint);
-
-        paint.setXfermode(null);
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        canvas = new Canvas(bitmap);
-        paint.setColor(Color.BLACK);
-        canvas.drawRoundRect(new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight()),
-                width / 4f, height / 4f, paint);
-        canvas.drawBitmap(note, (bitmap.getWidth() - note.getWidth()) / 2f,
-                (bitmap.getHeight() - note.getHeight()) / 2f, paint);
-
-        return new BitmapDrawable(resources, bitmap);
-    }
 
     public static void goToMainLooper(Runnable runnable) {
         new Handler(Looper.getMainLooper()).post(runnable);
@@ -248,34 +69,6 @@ public class Helper {
             }
         }
         return false;
-    }
-
-    public static GradientDrawable getRoundDrawable(int color, float radius) {
-        GradientDrawable gd = new GradientDrawable();
-        gd.setColor(color);
-        gd.setCornerRadius(radius);
-        return gd;
-    }
-
-    public static String code(String string) {
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < string.length(); i++) {
-            char ch = string.charAt(i);
-            if (i > 0) {
-                result.append("\\");
-            }
-            result.append((int) ch);
-        }
-        return result.toString();
-    }
-
-    public static String decode(String string) {
-        StringBuilder result = new StringBuilder();
-        String[] chars = string.split("\\\\");
-        for (String ch : chars) {
-            result.append((char) Integer.parseInt(ch));
-        }
-        return result.toString();
     }
 
     public static BitmapDrawable getNavigationIcon(Resources resources, int id, int degrees) {
@@ -403,15 +196,12 @@ public class Helper {
         int wh = w * h;
         int div = radius + radius + 1;
 
-        int r[] = new int[wh];
-        int g[] = new int[wh];
-        int b[] = new int[wh];
         int rsum, gsum, bsum, x, y, i, p, yp, yi, yw;
-        int vmin[] = new int[Math.max(w, h)];
+        int[] vmin = new int[Math.max(w, h)];
 
         int divsum = (div + 1) >> 1;
         divsum *= divsum;
-        int dv[] = new int[256 * divsum];
+        int[] dv = new int[256 * divsum];
         for (i = 0; i < 256 * divsum; i++) {
             dv[i] = (i / divsum);
         }
@@ -427,6 +217,9 @@ public class Helper {
         int routsum, goutsum, boutsum;
         int rinsum, ginsum, binsum;
 
+        int[] r = new int[wh];
+        int[] g = new int[wh];
+        int[] b = new int[wh];
         for (y = 0; y < h; y++) {
             rinsum = ginsum = binsum = routsum = goutsum = boutsum = rsum = gsum = bsum = 0;
             for (i = -radius; i <= radius; i++) {

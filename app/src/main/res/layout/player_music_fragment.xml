@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".player.mvp.view.PlayerActivity">
+    tools:context=".view.PlayerActivity">
 
     <LinearLayout
         android:id="@+id/playerTrackArtistAlbumContainer"
@@ -101,7 +101,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
-        android:layout_marginRight="16dp"
         app:layout_constraintBottom_toBottomOf="@+id/playerTrackProgress"
         app:layout_constraintEnd_toEndOf="@+id/playerSeekBar"
         app:layout_constraintTop_toTopOf="@+id/playerTrackProgress" />
@@ -133,8 +132,8 @@
 
     <Button
         android:id="@+id/playerPlayPause"
-        android:layout_width="@dimen/player_default_button_size"
-        android:layout_height="@dimen/player_default_button_size"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
         android:layout_marginBottom="32dp"
         android:button="@null"
         app:backgroundTint="@null"
