@@ -11,6 +11,7 @@ import android.provider.MediaStore;
 import androidx.annotation.NonNull;
 import androidx.documentfile.provider.DocumentFile;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -126,13 +127,7 @@ public class TrackPathsLoader {
         if (allTracksPathsDestroyTimeout != null) {
             allTracksPathsDestroyTimeout.cancel();
         }
-        Collections.sort(allTracksPaths, (o1, o2) -> {
-            DocumentFile documentFile = DocumentFile.fromSingleUri(context, Uri.parse(o1));
-            long first = documentFile.lastModified();
-            documentFile = DocumentFile.fromSingleUri(context, Uri.parse(o2));
-            long second = documentFile.lastModified();
-            return Long.compare(first, second);
-        });
+        Collections.sort(allTracksPaths, (o1, o2) -> new File(o1).getName().compareTo(new File(o2).getName()));
         allTracksPathsDestroyTimeout = new Timer();
         allTracksPathsDestroyTimeout.schedule(new TimerTask() {
             @Override

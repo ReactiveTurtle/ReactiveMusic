@@ -5,7 +5,6 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.ColorSpace;
 import android.graphics.LightingColorFilter;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
@@ -34,18 +33,18 @@ import static ru.reactiveturtle.reactivemusic.theme.Theme.setAlpha;
 public class IconManager {
     private Resources resources;
     private Resources.Theme theme;
-    private ThemeContext themeContext;
+    private ThemeContextColorContainer themeContextColorContainer;
     private ColorSet colorSet;
 
     public IconManager(@NonNull Resources resources,
                        @NonNull Resources.Theme theme,
-                       @NonNull ThemeContext themeContext) {
+                       @NonNull ThemeContextColorContainer themeContextColorContainer) {
         Objects.requireNonNull(resources);
         Objects.requireNonNull(theme);
-        Objects.requireNonNull(themeContext);
+        Objects.requireNonNull(themeContextColorContainer);
         this.resources = resources;
         this.theme = theme;
-        this.themeContext = themeContext;
+        this.themeContextColorContainer = themeContextColorContainer;
     }
 
     public void setColorSet(@NonNull ColorSet colorSet) {
@@ -83,8 +82,8 @@ public class IconManager {
             @Override
             public void draw(Canvas canvas, Paint paint) {
                 paint.setColor(setAlpha("8A", colorSet.getPrimary()));
-                canvas.drawCircle(canvas.getWidth() / 2f, canvas.getHeight() / 2f,
-                        canvas.getWidth() / 2f, paint);
+                /*canvas.drawCircle(canvas.getWidth() / 2f, canvas.getHeight() / 2f,
+                        canvas.getWidth() / 2f, paint);*/
             }
         });
         ShapeDrawable shapeDrawablePressed = new ShapeDrawable();
@@ -144,7 +143,7 @@ public class IconManager {
             if (frontFalse != null) {
                 frontFalse.mutate();
                 changeColor(frontFalse,
-                        setAlpha("8A", themeContext.getNegativePrimary()));
+                        setAlpha("8A", themeContextColorContainer.getNegativePrimary()));
             }
             if (frontTrue != null) {
                 frontTrue.mutate();
@@ -156,7 +155,7 @@ public class IconManager {
             if (frontFalse != null) {
                 frontFalse.mutate();
                 ((VectorDrawableCompat) frontFalse).setTintList(ColorStateList.valueOf(
-                        setAlpha("8A", themeContext.getNegativePrimary())));
+                        setAlpha("8A", themeContextColorContainer.getNegativePrimary())));
             }
             if (frontTrue != null) {
                 frontTrue.mutate();

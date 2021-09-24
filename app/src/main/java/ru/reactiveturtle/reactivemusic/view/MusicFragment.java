@@ -210,12 +210,12 @@ public class MusicFragment extends Fragment implements ThemeDependent {
     }
 
     @Override
-    public void onThemeUpdate() {
+    public void onThemeUpdate(Theme theme) {
 
     }
 
     @Override
-    public void onThemeContextUpdate() {
+    public void onThemeContextUpdate(Theme theme) {
 
     }
 

@@ -16,40 +16,33 @@ public class ThemeRepository extends Repository {
         super("THEME_REPOSITORY", context);
     }
 
-    public void setThemeContext(Theme.ColorContext themeContext) {
+    public void setThemeContext(Theme.ThemeContext themeContext) {
         this.themeContext = themeContext;
         getEditor().putString(THEME_CONTEXT, themeContext.toString()).apply();
     }
 
-    private Theme.ColorContext themeContext;
+    private Theme.ThemeContext themeContext;
 
-    public Theme.ColorContext getThemeContext() {
+    public Theme.ThemeContext getThemeContext() {
         if (themeContext == null) {
-            themeContext = Theme.ColorContext.valueOf(getPreferences().getString(THEME_CONTEXT, Theme.ColorContext.DARK.toString()));
+            themeContext = Theme.ThemeContext.valueOf(getPreferences().getString(THEME_CONTEXT, Theme.ThemeContext.DARK.toString()));
         }
         return themeContext;
     }
 
-    public void setThemeColorSet(@NonNull ColorSet colorSet) {
-        themeColorSet = colorSet;
-        getEditor().putString(THEME_COLOR, colorSet.toString()).apply();
+    public void setThemeColorType(@NonNull ColorType colorType) {
+        themeColorType = colorType;
+        getEditor().putString(THEME_COLOR, colorType.toString()).apply();
     }
 
-    private ColorSet themeColorSet;
+    private ColorType themeColorType;
 
     @NonNull
-    public ColorSet getThemeColorSet() {
-        if (themeColorSet == null) {
-            String colorString = getPreferences().getString(THEME_COLOR, null);
-            if (colorString == null) {
-                colorString = Objects.requireNonNull(MaterialColorPalette.M_A700.get(ColorType.GREEN)).toString();
-            }
-            String[] colorsAsString = colorString.split("\\|");
-            themeColorSet = new ColorSet(
-                    Integer.parseInt(colorsAsString[0]),
-                    Integer.parseInt(colorsAsString[1]),
-                    Integer.parseInt(colorsAsString[2]));
+    public ColorType getThemeColorType() {
+        if (themeColorType == null) {
+            String colorType = getPreferences().getString(THEME_COLOR, ColorType.YELLOW.toString());
+            themeColorType = ColorType.valueOf(colorType);
         }
-        return themeColorSet;
+        return themeColorType;
     }
 }

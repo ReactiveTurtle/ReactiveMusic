@@ -9,6 +9,8 @@ import android.widget.SeekBar;
 
 import androidx.annotation.NonNull;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import ru.reactiveturtle.reactivemusic.player.BackgroundGradientDrawable;
@@ -19,24 +21,32 @@ import ru.reactiveturtle.reactivemusic.toolkit.Releasable;
 public class Theme implements Releasable {
     private Context context;
     private ThemeRepository themeRepository;
-    private ThemeContext themeContext;
+    private ThemeContextColorContainer themeContextColorContainer;
     private IconManager iconManager;
     private ReactiveList<ThemeDependent> themeDependentList = new ReactiveList<>();
+    private ColorSet currentColorSet;
 
     public Theme(Context context) {
         this.context = context;
+        initContextMap();
         themeRepository = new ThemeRepository(context);
-        themeContext = new ThemeContext(this);
-        iconManager = new IconManager(context.getResources(), context.getTheme(), themeContext);
-        setColorSet(themeRepository.getThemeColorSet());
+        themeContextColorContainer = new ThemeContextColorContainer(this, themeRepository.getThemeContext());
+        iconManager = new IconManager(context.getResources(), context.getTheme(), themeContextColorContainer);
+        setThemeContext(themeRepository.getThemeContext());
     }
 
-    public void setColorSet(@NonNull ColorSet colorSet) {
+    public void setThemeContext(ThemeContext themeContext) {
+        this.themeRepository.setThemeContext(themeContext);
+        this.setColorSet(themeRepository.getThemeColorType(), contextMap.get(themeContext).get(themeRepository.getThemeColorType()));
+    }
+
+    public void setColorSet(@NonNull ColorType colorType, @NonNull ColorSet colorSet) {
         Objects.requireNonNull(colorSet);
-        defaultAlbumCover = DefaultAlbumCover.get(context.getResources(), colorSet.getPrimary());
+        currentColorSet = colorSet;
+        defaultAlbumCover = DefaultAlbumCover.get(context.getResources(), MaterialColorPalette.M_A700.get(colorType).getPrimary());
         defaultBackground = new BackgroundGradientDrawable(colorSet);
         iconManager.setColorSet(colorSet);
-        themeDependentList.forEachP(ThemeDependent::onThemeUpdate);
+        themeDependentList.forEachP((themeDependent, theme) -> themeDependent.onThemeUpdate(this));
     }
 
     public void addThemeDependent(ThemeDependent themeDependent) {
@@ -45,6 +55,12 @@ public class Theme implements Releasable {
             throw new IllegalStateException(String.format("Theme dependent object \"%s\" already tracked", themeDependent.getClass().getName()));
         }
         themeDependentList.add(themeDependent);
+    }
+
+    public void addThemeDependentAndCall(ThemeDependent themeDependent) {
+        addThemeDependent(themeDependent);
+        themeDependent.onThemeContextUpdate(this);
+        themeDependent.onThemeUpdate(this);
     }
 
     public void removeThemeDependent(ThemeDependent themeDependent) {
@@ -72,15 +88,15 @@ public class Theme implements Releasable {
     }
 
     public void updateSeekBar(SeekBar seekBar) {
-        int cursorColor = themeRepository.getThemeColorSet().getPrimary();
+        int cursorColor = getColorSet().getPrimary();
         int seekBarColor = getColorSet().getPrimaryDark();
         if (isDark()) {
             cursorColor = getColorSet().getPrimaryLight();
             seekBarColor = getColorSet().getPrimary();
         }
         if (isGrey(cursorColor) || !isDark() && isVeryBright(cursorColor)) {
-            cursorColor = themeContext.getNegativePrimary();
-            seekBarColor = themeContext.getNegativeSecondary();
+            cursorColor = themeContextColorContainer.getNegativePrimary();
+            seekBarColor = themeContextColorContainer.getNegativeSecondary();
         }
         changeColor(seekBar.getThumb(), cursorColor);
         changeColor(seekBar.getProgressDrawable(), seekBarColor);
@@ -93,19 +109,23 @@ public class Theme implements Releasable {
     }
 
     public boolean isDark() {
-        return themeRepository.getThemeContext() == ColorContext.DARK;
+        return themeRepository.getThemeContext() == ThemeContext.DARK;
     }
 
     public ColorSet getColorSet() {
-        return themeRepository.getThemeColorSet();
+        return currentColorSet;
+    }
+
+    public ColorType getColorType() {
+        return themeRepository.getThemeColorType();
     }
 
     public IconManager getIconManager() {
         return iconManager;
     }
 
-    public ThemeContext getThemeContext() {
-        return themeContext;
+    public ThemeContextColorContainer getThemeContext() {
+        return themeContextColorContainer;
     }
 
     public static boolean isGrey(int color) {
@@ -127,7 +147,13 @@ public class Theme implements Releasable {
                 + Integer.toHexString(color).substring(2));
     }
 
-    public enum ColorContext {
+    public enum ThemeContext {
         DARK, LIGHT
+    }
+
+    private final Map<ThemeContext, Map<ColorType, ColorSet>> contextMap = new HashMap<>();
+    private void initContextMap() {
+        contextMap.put(ThemeContext.DARK, MaterialColorPalette.M_700);
+        contextMap.put(ThemeContext.LIGHT, MaterialColorPalette.M_A700);
     }
 }

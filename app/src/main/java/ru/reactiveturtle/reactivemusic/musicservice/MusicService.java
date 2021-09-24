@@ -75,7 +75,6 @@ public class MusicService extends Service {
             this.musicService = musicService;
         }
 
-
         public Theme getTheme() {
             return musicService.theme;
         }

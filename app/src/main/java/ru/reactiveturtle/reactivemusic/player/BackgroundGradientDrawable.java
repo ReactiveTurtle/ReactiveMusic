@@ -33,13 +33,13 @@ public class BackgroundGradientDrawable extends GradientDrawable {
         ColorType colorType = MaterialColorPalette.findColorType(colorSet);
         Integer[][] variants = gradientColorVariantsMap.get(colorType);
         if (colorType == null || variants == null || variants.length == 0) {
-            return new int[]{Color.CYAN, Color.MAGENTA};
+            return new int[]{Color.parseColor("#212121"), Color.parseColor("#1565c0")};
         }
 
         int randomVariantIndex = (int) Math.round(Math.random() * (variants.length - 1));
         Integer[] variant = variants[randomVariantIndex];
         if (variant.length == 0) {
-            return new int[]{Color.CYAN, Color.MAGENTA};
+            return new int[]{Color.parseColor("#212121"), Color.parseColor("#1565c0")};
         }
 
         int[] variantsAsPrimitiveArray = new int[variant.length];

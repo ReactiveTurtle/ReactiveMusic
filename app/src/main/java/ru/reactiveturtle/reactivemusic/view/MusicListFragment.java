@@ -128,7 +128,7 @@ public class MusicListFragment extends Fragment implements ThemeDependent {
     }
 
     @Override
-    public void onThemeUpdate() {
+    public void onThemeUpdate(Theme theme) {
         musicListController.updateTheme(theme);
         if (!musicPlayerProvider.isPlaying()) {
             playPause.setBackground(theme.getIconManager().getRoundPlayIcon());
@@ -138,7 +138,7 @@ public class MusicListFragment extends Fragment implements ThemeDependent {
     }
 
     @Override
-    public void onThemeContextUpdate() {
+    public void onThemeContextUpdate(Theme theme) {
         previousTrack.setBackground(theme.getIconManager().getPreviousIcon());
         nextTrack.setBackground(theme.getIconManager().getNextIcon());
         title.setTextColor(theme.getThemeContext().getNegativePrimary());
@@ -179,8 +179,8 @@ public class MusicListFragment extends Fragment implements ThemeDependent {
 
     private void tryInitTheme() {
         if (musicListController != null && theme != null) {
-            onThemeUpdate();
-            onThemeContextUpdate();
+            onThemeUpdate(theme);
+            onThemeContextUpdate(theme);
         }
     }
 

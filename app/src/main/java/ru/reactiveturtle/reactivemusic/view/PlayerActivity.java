@@ -2,8 +2,10 @@ package ru.reactiveturtle.reactivemusic.view;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Rect;
-import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
@@ -28,9 +30,11 @@ import ru.reactiveturtle.reactivemusic.player.MusicMetadata;
 import ru.reactiveturtle.reactivemusic.musicservice.MusicServiceConnection;
 import ru.reactiveturtle.reactivemusic.player.MusicPlayerProvider;
 import ru.reactiveturtle.reactivemusic.player.shared.MusicAlbumCoverData;
+import ru.reactiveturtle.reactivemusic.theme.MaterialColorPalette;
 import ru.reactiveturtle.reactivemusic.theme.Theme;
+import ru.reactiveturtle.reactivemusic.theme.ThemeDependent;
 
-public class PlayerActivity extends AppCompatActivity {
+public class PlayerActivity extends AppCompatActivity implements ThemeDependent {
     @BindView(R.id.toolbar)
     protected Toolbar toolbar;
     @BindView(R.id.drawer_layout)
@@ -56,54 +60,22 @@ public class PlayerActivity extends AppCompatActivity {
         musicServiceConnection = new MusicServiceConnection(this);
         musicServiceConnection.setConnectionCallback(new MusicServiceConnection.ConnectionCallback() {
             private Theme theme;
+
             @Override
             public void onConnected(MusicService.Binder binder) {
                 initView(binder);
                 theme = binder.getTheme();
                 binder.getPlayer().addMusicPlayerListener(musicPlayerListener);
+                theme.addThemeDependentAndCall(PlayerActivity.this);
             }
 
             @Override
             public void onDisconnected() {
+                theme.removeThemeDependent(PlayerActivity.this);
                 theme = null;
             }
 
             private MusicPlayerProvider.MusicPlayerListener musicPlayerListener = new MusicPlayerProvider.MusicPlayerListener() {
-                @Override
-                public void onPrepared(int duration) {
-
-                }
-
-                @Override
-                public void onPlay() {
-
-                }
-
-                @Override
-                public void onPause() {
-
-                }
-
-                @Override
-                public void onLoopingChanged(boolean isLooping) {
-
-                }
-
-                @Override
-                public void onPlayRandomTrackChanged(boolean isPlayRandomTrack) {
-
-                }
-
-                @Override
-                public void onProgressChanged(int progress) {
-
-                }
-
-                @Override
-                public void onMusicMetadataLoad(@NonNull MusicMetadata musicMetadata) {
-
-                }
-
                 @Override
                 public void onMusicCoverDataLoad(@NonNull MusicAlbumCoverData musicAlbumCoverData) {
                     super.onMusicCoverDataLoad(musicAlbumCoverData);
@@ -135,8 +107,6 @@ public class PlayerActivity extends AppCompatActivity {
 
     @Override
     protected void onPause() {
-        if (Permissions.hasExternalStorage(this)) {
-        }
         super.onPause();
     }
 
@@ -150,9 +120,27 @@ public class PlayerActivity extends AppCompatActivity {
         super.onBackPressed();
     }
 
+    @Override
+    public void onThemeContextUpdate(Theme theme) {
+        bottomNavigationView.setBackgroundColor(theme.getThemeContext().getLight());
+        bottomNavigationView.setItemIconTintList(ColorStateList.valueOf(theme.getThemeContext().getNegativeSecondary()));
+    }
+
+    @Override
+    public void onThemeUpdate(Theme theme) {
+        int topColor = theme.getThemeContext().getThemeContext() == Theme.ThemeContext.DARK
+                ? theme.getColorSet().getPrimaryDark()
+                : theme.getColorSet().getPrimary();
+        bottomNavigationView.setItemTextColor(ColorStateList.valueOf(MaterialColorPalette.M_A700.get(theme.getColorType()).getPrimary()));
+        toolbar.setBackgroundColor(topColor);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(topColor);
+        }
+    }
+
     private void startAndConnectWithService() {
         if (!Permissions.hasExternalStorage(this)) {
-            return;
+            Permissions.requestExternalStorage(this);
         }
         if (!MusicService.isRunning()) {
             startService(new Intent(this, MusicService.class));
@@ -197,7 +185,7 @@ public class PlayerActivity extends AppCompatActivity {
                 }
             }
         });
-        bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
+        bottomNavigationView.setOnItemSelectedListener(item -> {
             switch (item.getItemId()) {
                 case R.id.playerBottomPlayerItem:
                     playerViewPager.setCurrentItem(0);
@@ -214,6 +202,8 @@ public class PlayerActivity extends AppCompatActivity {
             }
             return true;
         });
+
+
     }
 
 

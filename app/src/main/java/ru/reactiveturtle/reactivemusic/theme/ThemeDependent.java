@@ -1,7 +1,7 @@
 package ru.reactiveturtle.reactivemusic.theme;
 
 public interface ThemeDependent {
-    void onThemeUpdate();
+    void onThemeUpdate(Theme theme);
 
-    void onThemeContextUpdate();
+    void onThemeContextUpdate(Theme theme);
 }

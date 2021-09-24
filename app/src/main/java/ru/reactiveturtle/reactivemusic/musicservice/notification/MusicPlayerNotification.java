@@ -23,7 +23,7 @@ import ru.reactiveturtle.reactivemusic.theme.Theme;
 import ru.reactiveturtle.reactivemusic.toolkit.Releasable;
 
 public class MusicPlayerNotification implements Releasable {
-    private static final String MUSIC_CHANNEL = "MUSIC_CHANNEL";
+    private static final String CHANNEL_NAME = "Music Channel";
 
     private MusicServiceNotificationProvider musicServiceNotificationProvider;
     private Context context;
@@ -55,14 +55,14 @@ public class MusicPlayerNotification implements Releasable {
         NotificationChannel channel;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            channel = new NotificationChannel(MUSIC_CHANNEL, MUSIC_CHANNEL,
+            channel = new NotificationChannel(CHANNEL_NAME, CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription(MUSIC_CHANNEL);
+            channel.setDescription(CHANNEL_NAME);
             channel.enableLights(true);
             channel.setLightColor(Color.CYAN);
             channel.enableVibration(false);
             notificationManager.createNotificationChannel(channel);
-            notificationBuilder = new NotificationCompat.Builder(context, MUSIC_CHANNEL);
+            notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_NAME);
         } else {
             notificationBuilder = new NotificationCompat.Builder(context);
         }
